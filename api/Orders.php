@@ -580,4 +580,217 @@ class Orders extends ApiController
         $substitute =  $this->BadalOrder->getSsubstituteFromOrder($data['order_id']);
         $this->response($substitute);
     }
+
+
+    /**
+     * Save donation details from cart
+     * @param integer $donor_id
+     * @param integer $total
+     * @param string JSON object $donations
+     * @return response
+     */
+    public function saveOrder()
+    {
+
+        $data = $this->requiredArray(['donor_id', 'total', 'donations', 'payment_method_id']);
+
+        $donor = $this->donorModel->getDonorId($data['donor_id']);
+        if (!$donor) $this->error('Donor Not found');
+
+        $payment = $this->projectModel->getPaymentKey($data['payment_method_id'])[0];
+        if (!$payment) $this->error('Payment Not found');
+
+        //convert donation json object
+        $donations = json_decode($data['donations']);
+        if (empty($donations)) $this->error('Donations is empty');
+        $order_identifier = isset($payfortResponse->merchant_reference) ? $payfortResponse->merchant_reference : $this->projectModel->uniqNum();
+
+        //prepar order data
+        $orderdata = [
+            'order_identifier' => $order_identifier,
+            'payment_method_id' => $data['payment_method_id'],
+            'payment_method_key' => $payment->payment_key,
+            'projects' => '',
+            'total' => $data['total'],
+            'quantity' => 0,
+            'hash' => sha1(time() . rand(999, 999999)),
+            'projects_id' => '',
+            'donor_id' => $donor->donor_id,
+            'donor_name' => $donor->full_name,
+            'status' =>  0,
+            'app' => 'kafara'
+        ];
+
+        //loop through donations
+        foreach ($donations as $key => $donation) {
+            $project = $this->projectModel->getProjectByIdApp($donation->project_id);
+            if (!$project) $this->error('Project Not found');
+            $orderdata['projects_id'] .= "($project->project_id),";
+            $orderdata['quantity'] += $donation->quantity;
+            $orderdata['projects'] .= "$project->name, ";
+
+            if ($project->badal) {
+                // check for behafeof // relation // language // gender
+                // if not any return error message
+                $orderdata['app'] = 'badal';
+                $error_msg = '';
+                if (!exist(@$donation->behafeof)) $error_msg .= "behafeof field is mandatory \n\t ";
+                if (!exist(@$donation->relation)) $error_msg .= "relation field is mandatory\n\t ";
+                if (!exist(@$donation->language)) $error_msg .= "language field is mandatory\n\t ";
+                if (!exist(@$donation->gender))   $error_msg .= "gender field is mandatory\n\t ";
+                if (!empty($error_msg)) $this->error($error_msg);
+            }
+        }
+
+        // addOrder
+        if (!$orderdata['order_id'] = $this->projectModel->saveOrder($orderdata)) {
+            $this->error('Something went wrong while trying to save your order');
+        }
+        // save donations 
+        foreach ($donations as $donation) {
+            $project = $this->projectModel->getSingle(' project_id, badal', ['project_id' => $donation->project_id, 'status' => 1]);
+            $subsitute = null;
+            if (isset($donation->offer_id)) {
+                $subsitute = $this->BadalOrder->getSubsitudeOffer($donation->offer_id);
+            }
+            $donationData = [
+                'amount' => $donation->total / $donation->quantity,
+                'total' => $donation->total,
+                'quantity' => $donation->quantity,
+                'donation_type' => $donation->donationType,
+                'project_id' => $project->project_id,
+                'order_id' => $orderdata['order_id'],
+                'status' =>  0,
+                'substitute_id' => isset($donation->offer_id) ? @$subsitute->substitute_id :  null,
+                'is_offer' => isset($donation->offer_id) ? 1 : 0,
+                'offer_id' => isset($donation->offer_id) ? $donation->offer_id : null,
+                'offer_start_at' => isset($donation->offer_id) ?  time() : null,
+                'start_at' =>  null,
+            ];
+            //save donation data through saving method
+            if (!$this->projectModel->addDonation($donationData)) {
+                $this->error('Something went wrong while trying to save the order Donations');
+            }
+            //save Badal Order data 
+            if ($project->badal) {
+                $orderdata['app'] = 'badal';
+                $donationData['behafeof'] = $donation->behafeof;
+                $donationData['relation'] = $donation->relation;
+                $donationData['language'] = $donation->language;
+                $donationData['gender'] = $donation->gender;
+                $badalId = $this->BadalOrder->addBadalOrder($donationData);
+                if (!$badalId) {
+                    $this->error('Something went wrong while trying to save the Badal Order');
+                }
+                $orderdata['badal_id'] = $badalId;
+                // if order from offer hide offer
+                if (isset($donation->offer_id)) {
+                    $resquest = $this->BadalOrder->addRequestOffer($badalId, $donationData);
+                    $offer = $this->BadalOrder->updateStatusOffer($donation->offer_id);
+                }
+            }
+        }
+        //retrive all data
+        $this->response($orderdata);
+    }
+
+
+    /**
+     * update order payment with details
+     * @param integer $donor_id
+     * @param integer $total
+     * @return response
+     */
+    public function updateOrderPayment()
+    {
+        $data = $this->requiredArray(['order_id']);
+
+        // get Order
+        if (!$order = $this->projectModel->getOrderById($data['order_id'])) {
+            $this->error('Something went wrong while trying to save your order');
+        }
+        
+        if($order->payment_method_id != 1 && empty($_POST['payfortResponse']) ){
+            $this->error('payfortResponse is required');
+        }else{
+            $payfortResponse = json_decode($_POST['payfortResponse']);
+        }
+
+        $image['filename'] = false;
+       
+        if ($order->payment_method_id == 1) {
+            // validate image
+            if ($_FILES['bankImage']['error'] == 0) {
+                $image = uploadImage('bankImage', APPROOT . '/media/files/banktransfer/', 5000000, false);
+                if (!empty($image['error'])) $this->error(implode(',', $image['error']));
+            } else {
+                $this->error('please upload an image');
+            }
+        }
+        if (isset($payfortResponse->status) && ($payfortResponse->status == 14)) {
+            $order->status = 1;
+        } else {
+            $order->status  = 0;
+        }
+
+        // update order with bank image if exists
+        if ($image['filename']) {
+            $hash = $order->hash ?: null;
+            $order->image = $image['filename'];
+            $order->hash = $hash;
+            if (!$this->projectModel->updateOrderHash((array)$order)) {
+                $this->error('Something went wrong while trying to save the order Donations');
+            }
+            $order->hash = $hash->hash;
+        }
+        $this->projectModel->updateOrderMeta( (array)$order );
+        
+
+        $donor = $this->donorModel->getDonorId($order->donor_id);
+        if (!$donor) $this->error('Donor Not found');
+        //prepare notification data
+        $messaging = $this->model('Messaging');
+        $sendData = [
+            'mailto' => $donor->email,
+            'mobile' => $donor->mobile,
+            'identifier' => $order->order_identifier,
+            'order_id' => $order->order_id,
+            'total' => $order->total,
+            'project' => $order->projects,
+            'donor' => $order->donor_name,
+            'subject' => 'تم تسجيل طلب جديد ',
+            'msg' => "تم تسجيل طلب جديد بمشروع : {$order->projects} <br/> بقيمة : " . $order->total,
+
+        ];
+        //send Email and SMS confirmation
+        $messaging->donationAdminNotify($sendData);
+        // send message to donor 
+        $messaging->donationDonorNotify($sendData);
+        // send whatsapp message to donor 
+        $messaging->ReciveOrdersApp("$sendData[mobile]", "$sendData[donor]", " $sendData[identifier]", "$_POST[total]", 'namaa.sa');
+        // send sms if payment = 14 (payfort)
+        if (@$payfortResponse->status == 14) {
+            $order = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
+            if (!$order->notified) {
+                $messaging->sendConfirmation($sendData);
+                $this->projectModel->notified($order->order_id);
+
+                // queue the subsitudes in queue table
+                require_once APPROOT . '/admin/models/QueueTable.php';
+                $queueTable = new QueueTable();
+                $subsitutes = $queueTable->getAvailableSubsitudes();
+
+                if ($subsitutes) {
+                    foreach ($subsitutes as $subsitute) {
+                        $QueuData['order_id'] = $order->order_id;
+                        $QueuData['substitute_id'] = $subsitute->substitute_id;
+                        $queueTable->addqueue($QueuData);
+                    }
+                }
+            }
+        }
+
+        //retrive all data
+        $this->response($order);
+    }
 }

@@ -211,8 +211,9 @@ class Project extends Model
     public function updateOrderHash($data)
     {
         $query = 'UPDATE orders SET banktransferproof = :banktransferproof, payment_method_key = :payment_method_key, modified_date = :modified_date';
-
+        
         $query .= ' WHERE hash = :hash';
+        dd( $data);
         $this->db->query($query);
         // binding values
         $this->db->bind(':banktransferproof', $data['image']);
@@ -589,5 +590,51 @@ class Project extends Model
             $this->db->bind(':store_id', $store_id);
             $this->db->excute();
         }
+    }
+
+
+    /**
+     * saving order data
+     *
+     * @param array $data
+     * @return boolean
+     */
+    public function saveOrder($data)
+    {
+        $this->db->query('INSERT INTO orders (order_identifier, projects, total, quantity, payment_method_id, payment_method_key, projects_id, donor_id, donor_name, hash, app, status, modified_date, create_date)'
+            . ' VALUES (:order_identifier, :projects, :total, :quantity, :payment_method_id, :payment_method_key, :projects_id, :donor_id, :donor_name, :hash, :app, :status, :modified_date, :create_date)');
+        // binding values
+        $this->db->bind(':order_identifier', $data['order_identifier']);
+        $this->db->bind(':projects', $data['projects']);
+        $this->db->bind(':total', $data['total']);
+        $this->db->bind(':quantity', $data['quantity']);
+        $this->db->bind(':payment_method_id', $data['payment_method_id']);
+        $this->db->bind(':payment_method_key', $data['payment_method_key']);
+        $this->db->bind(':projects_id', $data['projects_id']);
+        $this->db->bind(':donor_id', $data['donor_id']);
+        $this->db->bind(':donor_name', $data['donor_name']);
+        $this->db->bind(':hash', $data['hash']);
+        $this->db->bind(':app', $data['app']);
+        $this->db->bind(':status', $data['status']);
+        $this->db->bind(':modified_date', time());
+        $this->db->bind(':create_date', time());
+        // excute
+        if ($this->db->excute()) {
+            return $this->db->lastId();
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * get order By id
+     *
+     * @param  mixed $hash
+     *
+     * @return void
+     */
+    public function getOrderById($order_id)
+    {
+        return $this->getSingle('*', ['order_id' => $order_id], 'orders');
     }
 }
