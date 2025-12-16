@@ -130,6 +130,73 @@ class Substitute extends Model
         $this->db->query($query);
         return ($this->db->resultSet());
     }
+    /**
+     * get substitutes with their badal_orders (paginated)
+     *
+     * @param int $page
+     * @param int $per_page
+     * @return array ['data'=>[], 'total'=>int]
+     */
+    public function getSubstitutesWithOrders($page = 1, $per_page = 20)
+    {
+        $page = max(1, (int)$page);
+        $per_page = max(1, (int)$per_page);
+        $offset = ($page - 1) * $per_page;
+
+        // total count
+        $this->db->query('SELECT COUNT(*) AS total FROM `substitutes` WHERE `status` <> 2');
+        $totalRow = $this->db->single();
+        $total = isset($totalRow->total) ? (int)$totalRow->total : 0;
+
+        // fetch substitutes with their orders (left join)
+        // note: we inject offset/limit as integers to avoid PDO limit binding issues
+        $query = 'SELECT s.substitute_id, s.full_name, s.gender, s.proportion, s.create_date,
+                     b.badal_id, b.order_id, b.amount, b.quantity, b.start_at, b.complete_at, b.status AS badal_status
+              FROM `substitutes` s
+              LEFT JOIN `badal_orders` b ON b.substitute_id = s.substitute_id
+              WHERE s.`status` <> 2
+              ORDER BY s.create_date DESC
+              LIMIT ' . (int)$offset . ', ' . (int)$per_page;
+
+        $this->db->query($query);
+        $rows = $this->db->resultSet();
+
+        // aggregate rows into substitutes with orders array
+        $result = [];
+        foreach ($rows as $r) {
+            $sid = $r->substitute_id;
+            if (!isset($result[$sid])) {
+                $result[$sid] = (object)[
+                    'substitute_id' => $sid,
+                    'full_name' => $r->full_name,
+                    'gender' => $r->gender,
+                    'proportion' => isset($r->proportion) ? $r->proportion : 0,
+                    'create_date' => $r->create_date,
+                    'orders' => []
+                ];
+            }
+
+            // if there is an order (LEFT JOIN might produce nulls)
+            if (!empty($r->badal_id)) {
+                $order = (object)[
+                    'badal_id' => $r->badal_id,
+                    'order_id' => $r->order_id,
+                    'amount' => $r->amount,
+                    'quantity' => $r->quantity,
+                    'start_at' => $r->start_at,
+                    'complete_at' => $r->complete_at,
+                    'status' => $r->badal_status,
+                ];
+                $result[$sid]->orders[] = $order;
+            }
+        }
+
+        // reindex to numeric array
+        $data = array_values($result);
+
+        return ['data' => $data, 'total' => $total];
+    }
+
 
 
 }

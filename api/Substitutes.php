@@ -80,4 +80,38 @@ class Substitutes extends ApiController
         $this->response("The Notify has been send successfully" );
     }
 
+    /**
+     * list substitutes with their orders (paginated)
+     * GET params: page, per_page
+     */
+    public function listWithOrders()
+    {
+        // read params (GET) — لو عندك request helper غير $_GET استبدلها
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 20;
+
+        // load substitute model (already in $this->model from __construct)
+        $subModel = $this->model; // in your __construct you set $this->model = $this->model('Substitute');
+        // or if not, do: $subModel = $this->model('Substitute');
+
+        $res = $subModel->getSubstitutesWithOrders($page, $per_page);
+
+        // prepare meta
+        $total = isset($res['total']) ? (int)$res['total'] : 0;
+        $pages = $per_page > 0 ? (int)ceil($total / $per_page) : 0;
+
+        $payload = [
+            'data' => $res['data'],
+            'meta' => [
+                'total' => $total,
+                'page' => $page,
+                'per_page' => $per_page,
+                'pages' => $pages
+            ]
+        ];
+
+        // use your controller response helper
+        $this->response($payload);
+    }
+
 }
