@@ -1,42 +1,102 @@
 <?php
 
-/*
- * Copyright (C) 2018 Easy CMS Framework Ahmed Elmahdy
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License
- * @license    https://opensource.org/licenses/GPL-3.0
- *
- * @package    Easy CMS MVC framework
- * @author     Ahmed Elmahdy
- * @link       https://ahmedx.com
- *
- * For more information about the author , see <http://www.ahmedx.com/>.
+/**
+ * Substitute Model - Updated Version
+ * 
+ * نموذج المنفذين مع دعم حفظ نسبة العمولة وقت الإسناد
  */
 
 class Substitute extends Model
 {
-
-    /**
-     * setting table name
-     */
     public function __construct()
     {
         parent::__construct('substitutes');
     }
 
+    /**
+     * إسناد منفذ لطلب بدل مع حفظ نسبة العمولة
+     * ✅ النسخة المحدثة بدون Transactions
+     * 
+     * @param array $data ['substitute_id', 'badal_id']
+     * @return boolean
+     */
+    public function selectSubstitutes($data)
+    {
+        // 1️⃣ جلب نسبة العمولة الحالية للمنفذ
+        $this->db->query('SELECT proportion FROM substitutes WHERE substitute_id = :substitute_id');
+        $this->db->bind(':substitute_id', $data['substitute_id']);
+        $this->db->excute();
+        $substitute = $this->db->single();
 
+        // ✅ التحقق من وجود المنفذ
+        if (!$substitute) {
+            return false; // المنفذ غير موجود
+        }
+
+        $proportion = (float) $substitute->proportion;
+
+        // 2️⃣ تحديث badal_orders مع حفظ النسبة
+        $query = 'UPDATE `badal_orders` 
+                  SET `substitute_id` = :substitute_id, 
+                      `substitute_proportion` = :substitute_proportion,
+                      `modified_date` = :modified_date  
+                  WHERE `badal_id` = :badal_id';
+
+        $this->db->query($query);
+        $this->db->bind(':substitute_id', $data['substitute_id']);
+        $this->db->bind(':substitute_proportion', $proportion);
+        $this->db->bind(':modified_date', time());
+        $this->db->bind(':badal_id', $data['badal_id']);
+
+        // ✅ تنفيذ التحديث
+        if ($this->db->excute()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     /**
-     * insert new Substitute
+     * الحصول على تفاصيل المنفذ مع حساب إجمالي العمولات
+     * 
+     * @param int $substitute_id
+     * @return object|null
+     */
+    public function getSubstituteWithCommissions($substitute_id)
+    {
+        $query = 'SELECT 
+            s.*,
+            COUNT(bo.badal_id) AS total_orders,
+            SUM(CASE WHEN bo.complete_at IS NOT NULL THEN 1 ELSE 0 END) AS completed_orders,
+            SUM(CASE WHEN bo.complete_at IS NOT NULL THEN bo.total * bo.substitute_proportion / 100 ELSE 0 END) AS total_commission_earned,
+            SUM(CASE WHEN bo.complete_at IS NULL AND bo.start_at IS NOT NULL THEN bo.total * bo.substitute_proportion / 100 ELSE 0 END) AS pending_commission
+        FROM substitutes s
+        LEFT JOIN badal_orders bo ON s.substitute_id = bo.substitute_id AND bo.status = 1
+        WHERE s.substitute_id = :substitute_id
+        GROUP BY s.substitute_id';
+
+        $this->db->query($query);
+        $this->db->bind(':substitute_id', $substitute_id);
+        $this->db->excute();
+        return $this->db->single();
+    }
+
+    /**
+     * إضافة منفذ جديد
+     * 
      * @param array $data
      * @return boolean
      */
     public function addSubstitute($data)
     {
-        
-        $this->db->query('INSERT INTO `substitutes`( image, full_name, identity, phone, nationality, gender, email, languages, status, modified_date, create_date)'
-            . ' VALUES ( :image, :full_name, :identity, :phone, :nationality, :gender, :email, :languages, :status, :modified_date, :create_date)');
+        $this->db->query('INSERT INTO `substitutes`(
+            image, full_name, identity, phone, nationality, gender, 
+            email, languages, proportion, status, modified_date, create_date
+        ) VALUES (
+            :image, :full_name, :identity, :phone, :nationality, :gender, 
+            :email, :languages, :proportion, :status, :modified_date, :create_date
+        )');
+
         // binding values
         $this->db->bind(':identity', $data['identity']);
         $this->db->bind(':image', $data['image']);
@@ -45,32 +105,12 @@ class Substitute extends Model
         $this->db->bind(':nationality', $data['nationality']);
         $this->db->bind(':gender', $data['gender']);
         $this->db->bind(':email', $data['email']);
-        $this->db->bind(':languages', implode(',', $data['languages']) );
+        $this->db->bind(':languages', implode(',', $data['languages']));
+        $this->db->bind(':proportion', isset($data['proportion']) ? $data['proportion'] : 0);
         $this->db->bind(':status', '0');
         $this->db->bind(':create_date', time());
         $this->db->bind(':modified_date', time());
 
-        // excute
-        if ($this->db->excute()) {
-            return true;
-        } else {
-            return false;
-        }  $this->db->query('INSERT INTO `substitutes`( image, full_name, identity, phone, nationality, gender, email, languages, status, modified_date, create_date)'
-            . ' VALUES ( :image, :full_name, :identity, :phone, :nationality, :gender, :email, :languages, :status, :modified_date, :create_date)');
-        // binding values
-        $this->db->bind(':identity', $data['identity']);
-        $this->db->bind(':image', $data['image']);
-        $this->db->bind(':full_name', $data['full_name']);
-        $this->db->bind(':phone', $data['phone']);
-        $this->db->bind(':nationality', $data['nationality']);
-        $this->db->bind(':gender', $data['gender']);
-        $this->db->bind(':email', $data['email']);
-        $this->db->bind(':languages', implode(',', $data['languages']) );
-        $this->db->bind(':status', '0');
-        $this->db->bind(':create_date', time());
-        $this->db->bind(':modified_date', time());
-
-        // excute
         if ($this->db->excute()) {
             return true;
         } else {
@@ -79,28 +119,116 @@ class Substitute extends Model
     }
 
     /**
-     * list all Substitute
-     * @param array $data
+     * تحديث نسبة عمولة المنفذ
+     * 
+     * @param int $substitute_id
+     * @param float $proportion
      * @return boolean
      */
-    public function getSubstitutes() {
-        $query = 'SELECT `substitute_id`, `full_name`, `gender`, `create_date` FROM `substitutes`  WHERE `status` <> 2 ';
+    public function updateSubstituteProportion($substitute_id, $proportion)
+    {
+        $query = 'UPDATE `substitutes` 
+                  SET `proportion` = :proportion, 
+                      `modified_date` = :modified_date 
+                  WHERE `substitute_id` = :substitute_id';
+
         $this->db->query($query);
-        return ($this->db->resultSet());
+        $this->db->bind(':substitute_id', $substitute_id);
+        $this->db->bind(':proportion', $proportion);
+        $this->db->bind(':modified_date', time());
+
+        if ($this->db->excute()) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
-     * select all Substitute
+     * الحصول على قائمة المنفذين مع إحصائيات العمولات
+     * 
+     * @return array
+     */
+    public function getSubstitutesWithStats()
+    {
+        $query = 'SELECT 
+            s.substitute_id,
+            s.full_name,
+            s.gender,
+            s.proportion,
+            s.phone,
+            s.email,
+            s.create_date,
+            COUNT(bo.badal_id) AS total_orders,
+            SUM(CASE WHEN bo.complete_at IS NOT NULL THEN 1 ELSE 0 END) AS completed_orders,
+            SUM(CASE WHEN bo.complete_at IS NOT NULL THEN bo.total * bo.substitute_proportion / 100 ELSE 0 END) AS total_commission
+        FROM `substitutes` s
+        LEFT JOIN `badal_orders` bo ON s.substitute_id = bo.substitute_id AND bo.status = 1
+        WHERE s.`status` <> 2
+        GROUP BY s.substitute_id
+        ORDER BY s.create_date DESC';
+
+        $this->db->query($query);
+        $this->db->excute();
+        return $this->db->resultSet();
+    }
+
+    /**
+     * الحصول على بيانات منفذ واحد
+     * 
+     * @param int $substitute_id
+     * @return object|null
+     */
+    public function getSubstituteById($substitute_id)
+    {
+        $this->db->query('SELECT * FROM `substitutes` WHERE substitute_id = :substitute_id');
+        $this->db->bind(':substitute_id', $substitute_id);
+        $this->db->excute();
+        return $this->db->single();
+    }
+
+    /**
+     * تحديث بيانات منفذ
+     * 
      * @param array $data
      * @return boolean
      */
-    public function selectSubstitutes($data) {
-        $query = 'UPDATE `badal_orders` SET `substitute_id` = :substitute_id, `modified_date` = :modified_date  WHERE `badal_id`= :badal_id';
+    public function updateSubstitute($data)
+    {
+        $query = 'UPDATE `substitutes` 
+                  SET full_name = :full_name,
+                      identity = :identity,
+                      phone = :phone,
+                      nationality = :nationality,
+                      gender = :gender,
+                      email = :email,
+                      languages = :languages,
+                      proportion = :proportion,
+                      modified_date = :modified_date';
+
+        // إذا كان فيه صورة جديدة
+        if (!empty($data['image'])) {
+            $query .= ', image = :image';
+        }
+
+        $query .= ' WHERE substitute_id = :substitute_id';
+
         $this->db->query($query);
         $this->db->bind(':substitute_id', $data['substitute_id']);
+        $this->db->bind(':full_name', $data['full_name']);
+        $this->db->bind(':identity', $data['identity']);
+        $this->db->bind(':phone', $data['phone']);
+        $this->db->bind(':nationality', $data['nationality']);
+        $this->db->bind(':gender', $data['gender']);
+        $this->db->bind(':email', $data['email']);
+        $this->db->bind(':languages', implode(',', $data['languages']));
+        $this->db->bind(':proportion', $data['proportion']);
         $this->db->bind(':modified_date', time());
-        $this->db->bind(':badal_id', $data['badal_id']);
-          // excute
+
+        if (!empty($data['image'])) {
+            $this->db->bind(':image', $data['image']);
+        }
+
         if ($this->db->excute()) {
             return true;
         } else {
@@ -108,95 +236,49 @@ class Substitute extends Model
         }
     }
 
-
     /**
-     * select all Substitute has order totday
-     * @param array $data
+     * حذف منفذ (Soft Delete)
+     * 
+     * @param int $substitute_id
      * @return boolean
      */
-    public function gettSubstitutesHasOrderToday() {
-        $query = 'SELECT `requests`.*, `substitutes`.phone, `substitutes`.email, `substitutes`.full_name,
-                         `orders`.total, `orders`.order_identifier, `projects`.`name` AS project_name
-                  FROM `requests`, `substitutes`, `badal_orders`, `orders`, `projects`
-                  WHERE `requests`.substitute_id  = `substitutes`.substitute_id  
-                  AND `requests`.badal_id = `badal_orders`.badal_id
-                  AND `badal_orders`.order_id = `orders`.order_id
-                  AND `projects`.project_id = `badal_orders`.project_id
-                  AND `requests`.is_selected = 1 
-                  AND `requests`.`status` = 1
-                  AND `badal_orders`.`status` = 1
-                  AND `substitutes`.`status` = 1
-                  AND DATE( FROM_UNIXTIME(`requests`.`start_at`)) = CURDATE(); ';
-        $this->db->query($query);
-        return ($this->db->resultSet());
-    }
-    /**
-     * get substitutes with their badal_orders (paginated)
-     *
-     * @param int $page
-     * @param int $per_page
-     * @return array ['data'=>[], 'total'=>int]
-     */
-    public function getSubstitutesWithOrders($page = 1, $per_page = 20)
+    public function deleteSubstitute($substitute_id)
     {
-        $page = max(1, (int)$page);
-        $per_page = max(1, (int)$per_page);
-        $offset = ($page - 1) * $per_page;
-
-        // total count
-        $this->db->query('SELECT COUNT(*) AS total FROM `substitutes` WHERE `status` <> 2');
-        $totalRow = $this->db->single();
-        $total = isset($totalRow->total) ? (int)$totalRow->total : 0;
-
-        // fetch substitutes with their orders (left join)
-        // note: we inject offset/limit as integers to avoid PDO limit binding issues
-        $query = 'SELECT s.substitute_id, s.full_name, s.gender, s.proportion, s.create_date,
-                     b.badal_id, b.order_id, b.amount, b.quantity, b.start_at, b.complete_at, b.status AS badal_status
-              FROM `substitutes` s
-              LEFT JOIN `badal_orders` b ON b.substitute_id = s.substitute_id
-              WHERE s.`status` <> 2
-              ORDER BY s.create_date DESC
-              LIMIT ' . (int)$offset . ', ' . (int)$per_page;
+        $query = 'UPDATE `substitutes` 
+                  SET status = 2, 
+                      modified_date = :modified_date 
+                  WHERE substitute_id = :substitute_id';
 
         $this->db->query($query);
-        $rows = $this->db->resultSet();
+        $this->db->bind(':substitute_id', $substitute_id);
+        $this->db->bind(':modified_date', time());
 
-        // aggregate rows into substitutes with orders array
-        $result = [];
-        foreach ($rows as $r) {
-            $sid = $r->substitute_id;
-            if (!isset($result[$sid])) {
-                $result[$sid] = (object)[
-                    'substitute_id' => $sid,
-                    'full_name' => $r->full_name,
-                    'gender' => $r->gender,
-                    'proportion' => isset($r->proportion) ? $r->proportion : 0,
-                    'create_date' => $r->create_date,
-                    'orders' => []
-                ];
-            }
-
-            // if there is an order (LEFT JOIN might produce nulls)
-            if (!empty($r->badal_id)) {
-                $order = (object)[
-                    'badal_id' => $r->badal_id,
-                    'order_id' => $r->order_id,
-                    'amount' => $r->amount,
-                    'quantity' => $r->quantity,
-                    'start_at' => $r->start_at,
-                    'complete_at' => $r->complete_at,
-                    'status' => $r->badal_status,
-                ];
-                $result[$sid]->orders[] = $order;
-            }
+        if ($this->db->excute()) {
+            return true;
+        } else {
+            return false;
         }
-
-        // reindex to numeric array
-        $data = array_values($result);
-
-        return ['data' => $data, 'total' => $total];
     }
 
+    /**
+     * الحصول على المنفذين المتاحين حسب الجنس واللغة
+     * 
+     * @param string $gender
+     * @param string $language
+     * @return array
+     */
+    public function getAvailableSubstitutes($gender, $language)
+    {
+        $query = 'SELECT * FROM `substitutes` 
+                  WHERE status = 1 
+                  AND gender = :gender 
+                  AND FIND_IN_SET(:language, languages) > 0
+                  ORDER BY proportion ASC, create_date DESC';
 
-
+        $this->db->query($query);
+        $this->db->bind(':gender', $gender);
+        $this->db->bind(':language', $language);
+        $this->db->excute();
+        return $this->db->resultSet();
+    }
 }

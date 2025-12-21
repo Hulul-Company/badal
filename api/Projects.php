@@ -77,28 +77,39 @@ class Projects extends ApiController
 
     public function albadal()
     {
-        
+        $start = isset($_GET['start']) ? (int) $_GET['start'] : 0;
+        $count = isset($_GET['count']) ? (int) $_GET['count'] : 20;
+
+        if ($start < 0) $start = 0;
+        if ($count < 1 || $count > 100) $count = 20;
+
         $setting = $this->BadalOrder->getSettingById(15);
         $setting = json_decode($setting->value);
         $types = [];
         if ($setting->haij_status) $types[] = "'hajj'";
         if ($setting->umrah_status) $types[] = "'umrah'";
-        
-        if ($types && $response = $this->model->getTableEdits($types)) {
-            // foreach ($response as $project) {
-                // $galery = str_replace('&quot;', '', trim(trim($project->image, ']'), '['));
-                // $galery = str_replace('&#34;', '', trim(trim($galery, ']'), '['));
-                // $galery = MEDIAURL . '/' . $galery;
-                // $galery = str_replace(',', ',' . MEDIAURL . '/', trim($galery));
-                // $project->image = array_filter(explode(',', $galery), 'strlen');
-                // $projects[] = $project;
-            // }
-            $this->response($response);
+
+        if ($types && $response = $this->model->getTableEdits($types, $start, $count)) {
+
+            $total = $this->model->getTableEditsCount($types);
+
+            $this->response([
+                'status' => 'success',
+                'data' => $response,
+                'pagination' => [
+                    'start' => $start,
+                    'count' => $count,
+                    'total' => $total,
+                    'current_page' => floor($start / $count) + 1,
+                    'total_pages' => ceil($total / $count),
+                    'has_more' => ($start + $count) < $total
+                ],
+                
+            ]);
         } else {
             $this->error('Not found');
         }
     }
-
     /**
      * get selected projects
      * @return response

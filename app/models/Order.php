@@ -45,18 +45,20 @@ class Order extends ModelAdmin
      *
      * @param  string $cond
      * @param  array $bind
-     * @param  string $limit
-     * @param  array $bindLimit
+     * @param  string $limit 
+     * @param  array $bindLimit 
      *
      * @return Object
      */
+
     public function getAll($query, $bind = '', $limit = '', $bindLimit = '')
     {
         $this->db->query($query . $limit);
         if (!empty($bind)) {
-            foreach ($bind as $key => $value) {
+            foreach ($bind as $key => $value) { 
                 $this->db->bind($key, $value);
             }
+
         }
         if (!empty($bindLimit)) {
             foreach ($bindLimit as $key => $value) {
@@ -71,11 +73,13 @@ class Order extends ModelAdmin
      * @param type $cond
      * @return type
      */
+
     public function allOrdersCount($cond = '', $bind = [])
     {
+        
         $query = 'SELECT count(*) as count FROM ' . $this->table . ' ord ' . $cond;
         $this->db->query($query);
-        if (!empty($bind)) {
+        if (!empty($bind)) { 
             foreach ($bind as $key => $value) {
                 $this->db->bind($key, $value);
             }

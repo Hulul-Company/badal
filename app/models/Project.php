@@ -438,25 +438,54 @@ class Project extends Model
         }
     }
 
-    public function getTableEdits($types)
+    /**
+     * Get Badal Projects with Pagination
+     * 
+     * @param array $types - أنواع المشاريع
+     * @param int $start - نقطة البداية
+     * @param int $count - عدد السجلات
+     * @return array
+     */
+    public function getTableEdits($types, $start = 0, $count = 20)
     {
         $query = 'SELECT *,
-                        CONCAT("' . MEDIAURL .  '/", `secondary_image` ) AS secondary_image, 
-                        CONCAT("' . MEDIAURL .  '/", `background_image` ) AS background_image, 
-                        CONCAT("' . MEDIAURL .  '/", `image` ) AS image, 
-                        from_unixtime(`start_date`) AS start_date , 
-                        from_unixtime(`end_date`) AS end_date
-                    FROM `projects` 
-                    WHERE `badal` = 1
-                    AND `status` = 1
-                    AND `badal_type` IN ( ' . implode(",", $types) . ')
-                    AND CURDATE() BETWEEN FROM_UNIXTIME(`start_date`) AND FROM_UNIXTIME(`end_date`);
-        ';
+                CONCAT("' . MEDIAURL .  '/", `secondary_image` ) AS secondary_image, 
+                CONCAT("' . MEDIAURL .  '/", `background_image` ) AS background_image, 
+                CONCAT("' . MEDIAURL .  '/", `image` ) AS image, 
+                FROM_UNIXTIME(`start_date`) AS start_date, 
+                FROM_UNIXTIME(`end_date`) AS end_date
+            FROM `projects` 
+            WHERE `badal` = 1
+            AND `status` = 1
+            AND `badal_type` IN ( ' . implode(",", $types) . ')
+            AND CURDATE() BETWEEN FROM_UNIXTIME(`start_date`) AND FROM_UNIXTIME(`end_date`)
+            ORDER BY create_date DESC
+            LIMIT ' . (int)$start . ', ' . (int)$count;
+
         $this->db->query($query);
-        return ($this->db->resultSet());
+        return $this->db->resultSet();
     }
 
+    /**
+     * Get Total Count of Badal Projects
+     * 
+     * @param array $types - أنواع المشاريع
+     * @return int
+     */
+    public function getTableEditsCount($types)
+    {
+        $query = 'SELECT COUNT(*) AS total
+            FROM `projects` 
+            WHERE `badal` = 1
+            AND `status` = 1
+            AND `badal_type` IN ( ' . implode(",", $types) . ')
+            AND CURDATE() BETWEEN FROM_UNIXTIME(`start_date`) AND FROM_UNIXTIME(`end_date`)';
 
+        $this->db->query($query);
+        $result = $this->db->single();
+
+        return $result ? (int)$result->total : 0;
+    }
     /**
      * get selected projects
      * 

@@ -319,22 +319,65 @@ class Orders extends ApiController
     }
 
     /**
-     * get badal order by donor 
+     * get badal order by donor with pagination
      * @param integer $donor_id
      * @param string $status
+     * @param integer $start (optional)
+     * @param integer $count (optional)
      * @return response
      */
     public function donor()
     {
         $data = $this->requiredArray(['donor_id', 'status']);
-        // get badal order by donor 
+
+        // ✅ معالجة Pagination Parameters
+        isset($_POST['start']) ? $start = (int) $_POST['start'] : $start = 0;
+        isset($_POST['count']) ? $count = (int) $_POST['count'] : $count = 20;
+
+        // ✅ التحقق من القيم
+        if ($start < 0) $start = 0;
+        if ($count < 1 || $count > 100) $count = 20;
+
+        // ✅ جلب البيانات مع الـ Pagination
         if ($data['status'] == 3) {
-            $Badalorders = $this->BadalOrder->getBadalOrderDonorComplete($data['donor_id'], $data['status']);
+            $Badalorders = $this->BadalOrder->getBadalOrderDonorComplete(
+                $data['donor_id'],
+                $data['status'],
+                $start,
+                $count
+            );
         } else {
-            $Badalorders = $this->BadalOrder->getBadalOrderDonor($data['donor_id'], $data['status']);
+            $Badalorders = $this->BadalOrder->getBadalOrderDonor(
+                $data['donor_id'],
+                $data['status'],
+                $start,
+                $count
+            );
         }
-        if ($Badalorders == null) $this->error('No data');
-        $this->response($Badalorders);
+
+        if ($Badalorders == null) {
+            $this->error('No data');
+        }
+
+        // ✅ جلب إجمالي العدد للـ Pagination
+        $total = $this->BadalOrder->getBadalOrderDonorCount($data['donor_id'], $data['status']);
+
+        // ✅ إضافة معلومات Pagination للاستجابة
+        $response = [
+            'status' => 'success',
+            'code' => 200,
+            'data' => $Badalorders,
+            'pagination' => [
+                'start' => $start,
+                'count' => $count,
+                'total' => $total,
+                'current_page' => $total > 0 ? floor($start / $count) + 1 : 0,
+                'total_pages' => $total > 0 ? ceil($total / $count) : 0,
+                'has_more' => ($start + $count) < $total
+            ]
+        ];
+
+        $this->response($response);
     }
 
     /**
@@ -343,14 +386,52 @@ class Orders extends ApiController
      * @param string $status
      * @return response
      */
+    /**
+     * get badal order by substitute with pagination
+     * @param integer $substitute_id
+     * @param string $status
+     * @param integer $start (optional)
+     * @param integer $count (optional)
+     * @return response
+     */
     public function substitute()
     {
         $data = $this->requiredArray(['substitute_id', 'status']);
-        // get order by substitute 
+
+        // ✅ معالجة Pagination Parameters
+        isset($_POST['start']) ? $data['start'] = (int) $_POST['start'] : $data['start'] = 0;
+        isset($_POST['count']) ? $data['count'] = (int) $_POST['count'] : $data['count'] = 20;
+
+        // ✅ التحقق من القيم
+        if ($data['start'] < 0) $data['start'] = 0;
+        if ($data['count'] < 1 || $data['count'] > 100) $data['count'] = 20;
+
+        // ✅ جلب البيانات
         $Badalorders = $this->BadalOrder->getBadalOrderSubstitute($data);
 
-        if ($Badalorders == null) $this->error('No data');
-        $this->response($Badalorders);
+        if ($Badalorders == null) {
+            $this->error('No data');
+        }
+
+        // ✅ جلب إجمالي العدد
+        $total = $this->BadalOrder->getBadalOrderSubstituteCount($data);
+
+        // ✅ إضافة معلومات Pagination
+        $response = [
+            'status' => 'success',
+            'code' => 200,
+            'data' => $Badalorders,
+            'pagination' => [
+                'start' => $data['start'],
+                'count' => $data['count'],
+                'total' => $total,
+                'current_page' => $total > 0 ? floor($data['start'] / $data['count']) + 1 : 0,
+                'total_pages' => $total > 0 ? ceil($total / $data['count']) : 0,
+                'has_more' => ($data['start'] + $data['count']) < $total
+            ]
+        ];
+
+        $this->response($response);
     }
 
     /**
@@ -409,7 +490,7 @@ class Orders extends ApiController
         $this->BadalOrder->updateBadalOrderCompleted($data['badal_id']);
         // send messages  (email - sms - whatsapp)
         $donor = $this->BadalOrder->getDonorByOrderID($Badalorders->order_id);
-        
+
         $sendData = [
             'order_id'              => @$Badalorders->order_id,
             'mailto'                => @$donor->email,
@@ -593,7 +674,7 @@ class Orders extends ApiController
     {
 
         $data = $this->requiredArray(['donor_id', 'total', 'donations', 'payment_method_id']);
-
+       
         $donor = $this->donorModel->getDonorId($data['donor_id']);
         if (!$donor) $this->error('Donor Not found');
 
@@ -709,15 +790,15 @@ class Orders extends ApiController
         if (!$order = $this->projectModel->getOrderById($data['order_id'])) {
             $this->error('Something went wrong while trying to save your order');
         }
-        
-        if($order->payment_method_id != 1 && empty($_POST['payfortResponse']) ){
+
+        if ($order->payment_method_id != 1 && empty($_POST['payfortResponse'])) {
             $this->error('payfortResponse is required');
-        }else{
+        } else {
             $payfortResponse = json_decode($_POST['payfortResponse']);
         }
 
         $image['filename'] = false;
-       
+
         if ($order->payment_method_id == 1) {
             // validate image
             if ($_FILES['bankImage']['error'] == 0) {
@@ -743,8 +824,8 @@ class Orders extends ApiController
             }
             $order->hash = $hash->hash;
         }
-        $this->projectModel->updateOrderMeta( (array)$order );
-        
+        $this->projectModel->updateOrderMeta((array)$order);
+
 
         $donor = $this->donorModel->getDonorId($order->donor_id);
         if (!$donor) $this->error('Donor Not found');
@@ -767,7 +848,7 @@ class Orders extends ApiController
         // send message to donor 
         $messaging->donationDonorNotify($sendData);
         // send whatsapp message to donor 
-        $messaging->ReciveOrdersApp("$sendData[mobile]", "$sendData[donor]", " $sendData[identifier]", "$_POST[total]", 'namaa.sa');
+        $messaging->ReciveOrdersApp("$sendData[mobile]", "$sendData[donor]", " $sendData[identifier]",  "$_POST[total]", 'namaa.sa');
         // send sms if payment = 14 (payfort)
         if (@$payfortResponse->status == 14) {
             $order = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
@@ -789,6 +870,8 @@ class Orders extends ApiController
                 }
             }
         }
+
+        
 
         //retrive all data
         $this->response($order);

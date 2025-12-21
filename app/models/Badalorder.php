@@ -113,7 +113,15 @@ class Badalorder extends Model
      * @param int $donor_id
      * @param int $status
      */
-    public function getBadalOrderDonor($donor_id, $status)
+    /**
+     * get badalOrders by donor with pagination
+     * @param int $donor_id
+     * @param int $status
+     * @param int $start
+     * @param int $count
+     * @return array
+     */
+    public function getBadalOrderDonor($donor_id, $status, $start = 0, $count = 20)
     {
         $query = 'SELECT `projects`.name, `badal_orders`.*,  orders.donor_id,
                     (SELECT from_unixtime( `requests`.start_at)  FROM `requests` WHERE `requests`.badal_id = `badal_orders`.badal_id AND `requests`.status = 1 AND `requests`.is_selected = 1 Limit 1) AS time
@@ -125,11 +133,12 @@ class Badalorder extends Model
                 AND  `badal_orders`.project_id =  `projects`.project_id  
                 AND `orders`.status <> 2  
                 AND orders.order_id =  `badal_orders`.order_id';
+
         switch ($status) {
-            case 1: // pinding
+            case 1: // pending
                 $query .= ' AND  `badal_orders`.complete_at IS NULL AND `badal_orders`.start_at IS NULL ';
                 break;
-            case 2: // in proccess
+            case 2: // in process
                 $query .= ' AND `badal_orders`.complete_at IS  NULL AND `badal_orders`.start_at IS NOT NULL AND `orders`.status = 1 ';
                 break;
             case 3: // complete
@@ -139,6 +148,9 @@ class Badalorder extends Model
                 return false;
                 break;
         }
+
+        $query .= ' ORDER BY `badal_orders`.create_date DESC LIMIT ' . (int)$start . ', ' . (int)$count;
+
         $this->db->query($query);
         $this->db->bind(':donor_id', $donor_id);
 
@@ -146,11 +158,95 @@ class Badalorder extends Model
     }
 
     /**
+     * get count of badalOrders by donor
+     * @param int $donor_id
+     * @param int $status
+     * @return int
+     */
+    public function getBadalOrderDonorCount($donor_id, $status)
+    {
+        $query = 'SELECT COUNT(*) as total
+                FROM  `badal_orders`, `projects`, `orders`
+                WHERE orders.donor_id = :donor_id 
+                AND  `badal_orders`.project_id =  `projects`.project_id  
+                AND `orders`.status <> 2  
+                AND orders.order_id =  `badal_orders`.order_id';
+
+        switch ($status) {
+            case 1: // pending
+                $query .= ' AND  `badal_orders`.complete_at IS NULL AND `badal_orders`.start_at IS NULL ';
+                break;
+            case 2: // in process
+                $query .= ' AND `badal_orders`.complete_at IS  NULL AND `badal_orders`.start_at IS NOT NULL AND `orders`.status = 1 ';
+                break;
+            case 3: // complete
+                $query .= ' AND `badal_orders`.complete_at IS NOT NULL AND `orders`.status = 1 ';
+                break;
+            default:
+                return 0;
+                break;
+        }
+
+        $this->db->query($query);
+        $this->db->bind(':donor_id', $donor_id);
+        $result = $this->db->single();
+
+        return isset($result->total) ? (int)$result->total : 0;
+    }
+
+    /**
+     * get badalOrders by donor (complete) with pagination
+     * @param int $donor_id
+     * @param int $status
+     * @param int $start
+     * @param int $count
+     * @return array
+     */
+    // public function getBadalOrderDonorComplete($donor_id, $status, $start = 0, $count = 20)
+    // {
+    //     $query = 'SELECT `projects`.name, `badal_orders`.*,  orders.donor_id
+    //                 , from_unixtime( `badal_orders`.complete_at)  AS time
+    //                 , from_unixtime( `badal_orders`.start_at) AS start_at
+    //                 , from_unixtime( `badal_orders`.complete_at) AS complete_at
+    //                 ,(SELECT rate FROM `badal_review` WHERE `badal_review`.badal_id = `badal_orders`.badal_id) AS review 
+    //             FROM  `badal_orders`, `projects`  ,orders
+    //             WHERE orders.donor_id = :donor_id 
+    //             AND  `badal_orders`.project_id =  `projects`.project_id  
+    //             AND `orders`.status <> 2  
+    //             AND orders.order_id =  `badal_orders`.order_id';
+
+    //     switch ($status) {
+    //         case 1: // pending
+    //             $query .= ' AND  `badal_orders`.complete_at IS NULL AND `badal_orders`.start_at IS NULL ';
+    //             break;
+    //         case 2: // in process
+    //             $query .= ' AND `badal_orders`.complete_at IS  NULL AND `badal_orders`.start_at IS NOT NULL AND `orders`.status = 1 ';
+    //             break;
+    //         case 3: // complete
+    //             $query .= ' AND `badal_orders`.complete_at IS NOT NULL AND `orders`.status = 1 ';
+    //             break;
+    //         default:
+    //             return false;
+    //             break;
+    //     }
+
+    //     // إضافة ORDER BY و LIMIT للـ Pagination
+    //     $query .= ' ORDER BY `badal_orders`.complete_at DESC LIMIT ' . (int)$start . ', ' . (int)$count;
+
+    //     $this->db->query($query);
+    //     $this->db->bind(':donor_id', $donor_id);
+
+    //     return $this->db->resultSet();
+    // }
+    /**
      * get badalOrders by substitute_id and status
      * @param Array $data [status,substitute_id]
      */
     public function getBadalOrderSubstitute($data)
     {
+        $start = isset($data['start']) ? (int)$data['start'] : 0;
+        $count = isset($data['count']) ? (int)$data['count'] : 20;
+
         $query = 'SELECT `projects`.name as project_name, `badal_orders`.*, orders.donor_id';
 
         switch ($data['status']) {
@@ -173,11 +269,12 @@ class Badalorder extends Model
         AND  `badal_orders`.project_id =  `projects`.project_id   
         AND `badal_orders`.status = 1 
          AND orders.order_id =  `badal_orders`.order_id';
+
         switch ($data['status']) {
-            case 1: // pinding
+            case 1: // pending
                 $query .= ' AND  `badal_orders`.complete_at IS NULL AND `badal_orders`.start_at IS NULL ';
                 break;
-            case 2: // in proccess
+            case 2: // in process
                 $query .= ' AND `badal_orders`.complete_at IS  NULL AND `badal_orders`.start_at IS NOT NULL';
                 break;
             case 3: // complete
@@ -188,9 +285,49 @@ class Badalorder extends Model
                 break;
         }
 
+        // إضافة ORDER BY و LIMIT للـ Pagination
+        $query .= ' ORDER BY `badal_orders`.create_date DESC LIMIT ' . $start . ', ' . $count;
+
         $this->db->query($query);
         $this->db->bind(':substitute_id', $data['substitute_id']);
         return $this->db->resultSet();
+    }
+
+    /**
+     * get count of badalOrders by substitute
+     * @param Array $data [status, substitute_id]
+     * @return int
+     */
+    public function getBadalOrderSubstituteCount($data)
+    {
+        $query = 'SELECT COUNT(*) as total
+        FROM  `badal_orders`, `projects`, orders, `requests`
+        WHERE badal_orders.substitute_id = :substitute_id 
+        AND `requests`.badal_id = `badal_orders`.badal_id AND `requests`.status = 1 AND `requests`.is_selected = 1
+        AND  `badal_orders`.project_id =  `projects`.project_id   
+        AND `badal_orders`.status = 1 
+         AND orders.order_id =  `badal_orders`.order_id';
+
+        switch ($data['status']) {
+            case 1: // pending
+                $query .= ' AND  `badal_orders`.complete_at IS NULL AND `badal_orders`.start_at IS NULL ';
+                break;
+            case 2: // in process
+                $query .= ' AND `badal_orders`.complete_at IS  NULL AND `badal_orders`.start_at IS NOT NULL';
+                break;
+            case 3: // complete
+                $query .= ' AND `badal_orders`.complete_at IS NOT NULL ';
+                break;
+            default:
+                return 0;
+                break;
+        }
+
+        $this->db->query($query);
+        $this->db->bind(':substitute_id', $data['substitute_id']);
+        $result = $this->db->single();
+
+        return isset($result->total) ? (int)$result->total : 0;
     }
 
     /**
@@ -538,4 +675,5 @@ class Badalorder extends Model
         $this->db->bind(':order_id', $order_id);
         return $this->db->resultSet();
     }
+    
 }

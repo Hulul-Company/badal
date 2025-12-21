@@ -4,9 +4,17 @@ class Apis extends Controller
 {
     private $apiModel;
     public $donorModel;
+    public $badalorderModel;
+
+
     public function __construct()
     {
         $this->apiModel = $this->model('Api');
+        $this->badalorderModel = $this->model('Badalorder'); 
+
+        // إذا كان فيه models تانية تحتاجها
+        // $this->substituteModel = $this->model('Substitute');
+        // $this->orderModel = $this->model('Order');
     }
 
     public function index()
@@ -80,13 +88,22 @@ class Apis extends Controller
     public function orders()
     {
         $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-        if (isset($_POST['api_key']) && isset($_POST['api_user'])) { // check if credential is sent
-            $auth = $this->apiModel->auth($_POST['api_user'], $_POST['api_key']); // load API settings
+
+        if (isset($_POST['api_key']) && isset($_POST['api_user'])) {
+            $auth = $this->apiModel->auth($_POST['api_user'], $_POST['api_key']);
+
             if ($auth['enable']) {
-                //validate credential
                 if ($auth['authorized']) {
+
+                    // ✅ معالجة Pagination Parameters
                     isset($_POST['start']) ? $start = (int) $_POST['start'] : $start = 0;
                     isset($_POST['count']) ? $count = (int) $_POST['count'] : $count = 20;
+
+                    // ✅ التحقق من القيم
+                    if ($start < 0) $start = 0;
+                    if ($count < 1 || $count > 100) $count = 20;
+
+                    // معالجة المدخلات الأخرى
                     isset($_POST['status']) ? $status = ' AND ord.status =' . (int) $_POST['status'] : $status = '';
                     isset($_POST['order_identifier']) ? $order_identifier = ' AND ord.order_identifier =' . (int) $_POST['order_identifier'] : $order_identifier = '';
                     isset($_POST['order_id']) ? $order_id = ' AND ord.order_id =' . (int) $_POST['order_id'] : $order_id = '';
@@ -95,50 +112,161 @@ class Apis extends Controller
                     isset($_POST['API_odoo']) ? $API_odoo = ' AND ord.API_odoo ="' . $_POST['API_odoo'] . '"' : $API_odoo = '';
                     isset($_POST['payment_method']) ? $payment_method = ' AND ord.payment_method_id =' . (int) $_POST['payment_method'] : $payment_method = '';
                     isset($_POST['store_id']) ? $store_id = ' AND ord.store_id =' . (int) $_POST['store_id'] : $store_id = '';
-                    isset($_POST['start_date']) ? $start_date = " AND  ord.`create_date` >= UNIX_TIMESTAMP('".date('Y-m-d', strtotime($_POST['start_date']))." 00:00:00') " : $start_date = '';
-                    isset($_POST['end_date']) ? $end_date = "AND ord.`create_date` <= UNIX_TIMESTAMP('".date('Y-m-d', strtotime($_POST['end_date']))." 23:59:59')" : $end_date = '';
+                    isset($_POST['start_date']) ? $start_date = " AND ord.`create_date` >= UNIX_TIMESTAMP('" . date('Y-m-d', strtotime($_POST['start_date'])) . " 00:00:00') " : $start_date = '';
+                    isset($_POST['end_date']) ? $end_date = " AND ord.`create_date` <= UNIX_TIMESTAMP('" . date('Y-m-d', strtotime($_POST['end_date'])) . " 23:59:59')" : $end_date = '';
 
+                    // بناء فلتر حالة التنفيذ
+                    $execution_status = isset($_POST['execution_status']) ? $_POST['execution_status'] : '';
+                    $execution_cond = '';
 
-                    // load orders
-                    $orders = $this->apiModel->getOrders($start, $count, $status, $order_identifier, $order_id, $API_status, $API_odoo, $custom_status_id, $payment_method, $store_id, $start_date, $end_date);         
+                    if (!empty($execution_status)) {
+                        switch ($execution_status) {
+                            case 'not_started':
+                            case '0':
+                                $execution_cond = " AND EXISTS (SELECT 1 FROM badal_orders bo WHERE bo.order_id = ord.order_id AND bo.start_at IS NULL AND bo.complete_at IS NULL)";
+                                break;
+                            case 'in_progress':
+                            case '1':
+                                $execution_cond = " AND EXISTS (SELECT 1 FROM badal_orders bo WHERE bo.order_id = ord.order_id AND bo.start_at IS NOT NULL AND bo.complete_at IS NULL)";
+                                break;
+                            case 'completed':
+                            case '2':
+                                $execution_cond = " AND EXISTS (SELECT 1 FROM badal_orders bo WHERE bo.order_id = ord.order_id AND bo.complete_at IS NOT NULL)";
+                                break;
+                        }
+                    }
+
+                    // ✅ تحميل الطلبات
+                    $orders = $this->apiModel->getOrders(
+                        $start,
+                        $count,
+                        $status,
+                        $order_identifier,
+                        $order_id,
+                        $API_status,
+                        $API_odoo,
+                        $custom_status_id,
+                        $payment_method,
+                        $store_id,
+                        $start_date,
+                        $end_date,
+                        $execution_cond
+                    );
+
+                    // ✅ جلب إجمالي العدد
+                    $total = $this->apiModel->getOrdersCount(
+                        $status,
+                        $order_identifier,
+                        $order_id,
+                        $API_status,
+                        $API_odoo,
+                        $custom_status_id,
+                        $payment_method,
+                        $store_id,
+                        $start_date,
+                        $end_date,
+                        $execution_cond
+                    );
+
                     $newOrders = [];
                     foreach ($orders as $index => $order) {
                         $newOrders[$index] = $order;
                         $newOrders[$index]->meta = json_decode($order->meta);
+
+                        // donations & store
                         $newOrders[$index]->donations = $this->apiModel->getDonationByOrderId($order->order_id);
-                        $newOrders[$index]->store_id = $this->apiModel->getStore($order->store_id);
+                        $newOrders[$index]->store_id  = $this->apiModel->getStore($order->store_id);
+
+                        $badal = $this->badalorderModel->getBadalOrderByOrderID($order->order_id);
+
+                        if ($badal) {
+                            // execution status
+                            if (empty($badal->start_at) && empty($badal->complete_at)) {
+                                $newOrders[$index]->execution_status_id = 0;
+                                $newOrders[$index]->execution_status = 'not_started';
+                            } elseif (!empty($badal->start_at) && empty($badal->complete_at)) {
+                                $newOrders[$index]->execution_status_id = 1;
+                                $newOrders[$index]->execution_status = 'in_progress';
+                            } elseif (!empty($badal->complete_at)) {
+                                $newOrders[$index]->execution_status_id = 2;
+                                $newOrders[$index]->execution_status = 'completed';
+                            }
+
+                            $newOrders[$index]->badal = $badal;
+
+                            // executor (substitute)
+                            if (!empty($badal->substitute_id)) {
+                                $executor = $this->badalorderModel->getSsubstituteFromOrder($order->order_id);
+
+                                if ($executor) {
+                                    $newOrders[$index]->executor = (object) [
+                                        'substitute_id' => $executor->substitute_id,
+                                        'full_name'     => $executor->full_name,
+                                        'email'         => $executor->email,
+                                        'mobile'        => $executor->phone,
+                                        'identity'      => $executor->identity,
+                                        'languages'     => $executor->languages,
+                                        'gender'        => $executor->gender,
+                                        'proportion'    => isset($executor->proportion) ? $executor->proportion : 0
+                                    ];
+
+                                    $newOrders[$index]->line_commission =
+                                        !empty($badal->substitute_proportion)
+                                        ? $badal->substitute_proportion
+                                        : ($executor->proportion ?? 0);
+                                }
+                            } else {
+                                $newOrders[$index]->executor = null;
+                                $newOrders[$index]->line_commission = 0;
+                            }
+                        } else {
+                            $newOrders[$index]->execution_status_id = null;
+                            $newOrders[$index]->execution_status = null;
+                            $newOrders[$index]->badal = null;
+                            $newOrders[$index]->executor = null;
+                            $newOrders[$index]->line_commission = 0;
+                        }
                     }
+
                     $data = [
                         'status' => 'success',
                         'code' => 100,
                         'msg' => 'Successfully connected',
-                        'count' => count($orders),
                         'orders' => $newOrders,
+                        'pagination' => [
+                            'start' => $start,
+                            'count' => $count,
+                            'total' => $total,
+                            'current_page' => $total > 0 ? floor($start / $count) + 1 : 0,
+                            'total_pages' => $total > 0 ? ceil($total / $count) : 0,
+                            'has_more' => ($start + $count) < $total
+                        ],
                     ];
-                } else { // wrong user or key
+                } else {
                     $data = [
                         'status' => 'error',
                         'code' => 102,
                         'msg' => 'Wrong Credential check user and API key',
                     ];
                 }
-            } else { // API not enabled
+            } else {
                 $data = [
                     'status' => 'error',
                     'code' => 103,
                     'msg' => 'API not enabled',
                 ];
             }
-        } else { // no credential
+        } else {
             $data = [
                 'status' => 'error',
                 'code' => 101,
                 'msg' => 'Invalid Credential',
             ];
         }
-        // echo str_replace('"||','', str_replace('||"',"\n",json_encode($data)));
+
         echo json_encode($data);
     }
+
 
     /**
      * update order status
