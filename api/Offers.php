@@ -84,10 +84,42 @@ class Offers extends ApiController
      */
     public function substitute()
     {
+        // required param
         $data = $this->requiredArray(['substitute_id']);
-        $offers = $this->model->getOffersBySubstitute($data['substitute_id']);
-        $this->response($offers);
+        $substitute_id = (int) $data['substitute_id'];
+
+        // pagination params (from GET to match your example)
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $per_page = isset($_GET['per_page']) ? (int) $_GET['per_page'] : 5;
+
+        // validation and safety
+        if ($page < 1) $page = 1;
+        if ($per_page < 1 || $per_page > 200) $per_page = 5;
+
+        $offset = ($page - 1) * $per_page;
+
+        // call model paginated method and count
+        $rows = $this->model->getOffersBySubstitutePaginated($substitute_id, $offset, $per_page);
+        $totalRecordsRow = $this->model->getOffersBySubstituteCount($substitute_id);
+        $totalRecords = $totalRecordsRow ? (int)$totalRecordsRow->total : 0;
+
+        // build meta
+        $totalPages = $per_page ? (int) ceil($totalRecords / $per_page) : 0;
+
+        $response = [
+            'data' => $rows,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $per_page,
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages,
+                'has_more' => ($offset + $per_page) < $totalRecords,
+            ],
+        ];
+
+        $this->response($response);
     }
+
 
     /**
      * list offers 
@@ -95,7 +127,33 @@ class Offers extends ApiController
      */
     public function list()
     {
-        $offers = $this->model->getOffers();
-        $this->response($offers);
+        // pagination params
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $per_page = isset($_GET['per_page']) ? (int) $_GET['per_page'] : 10;
+
+        if ($page < 1) $page = 1;
+        if ($per_page < 1 || $per_page > 200) $per_page = 10;
+
+        $offset = ($page - 1) * $per_page;
+
+        // get data
+        $offers = $this->model->getOffersPaginated($offset, $per_page);
+        $totalRow = $this->model->getOffersCount();
+        $totalRecords = $totalRow ? (int) $totalRow->total : 0;
+
+        $totalPages = ceil($totalRecords / $per_page);
+
+        $response = [
+            'data' => $offers,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $per_page,
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages,
+                'has_more' => ($offset + $per_page) < $totalRecords,
+            ],
+        ];
+
+        $this->response($response);
     }
 }

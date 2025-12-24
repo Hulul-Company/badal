@@ -466,18 +466,23 @@ class Apis extends Controller
                     $filter = [];
                     isset($_POST['order_identifier']) ? $filter['order_identifier'] =  (int) $_POST['order_identifier']   : '';
                     $orders = false;
+
                     if (isset($_POST['API_odoo'])) {
-                        switch ($_POST['API_odoo']) {
-                            case 1:
-                                $orders = $this->apiModel->updatetOrdersOdooWithDate($filter, 1, $_POST['start_date'], $_POST['end_date']);
-                                break;
-                            case 0:
-                                $orders = $this->apiModel->updatetOrdersOdooWithDate($filter, 0, $_POST['start_date'], $_POST['end_date']);
-                                break;
-                            default:
-                                break;
+                        // cast to int and validate range
+                        $odooVal = (int) $_POST['API_odoo'];
+                        if ($odooVal >= 0 && $odooVal <= 10) {
+                            $orders = $this->apiModel->updatetOrdersOdooWithDate($filter, $odooVal, $_POST['start_date'] ?? null, $_POST['end_date'] ?? null);
+                        } else {
+                            $data = [
+                                'status' => 'error',
+                                'code' => 105,
+                                'msg' => 'API_odoo must be an integer between 1 and 10'
+                            ];
+                            echo json_encode($data);
+                            return;
                         }
                     }
+
                     // update orders
                     if ($orders) {
                         $msg = 'Successfully updated ' . $orders . ' record';

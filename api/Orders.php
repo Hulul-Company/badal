@@ -455,12 +455,49 @@ class Orders extends ApiController
      */
     public function pendingOrders()
     {
+        // required param
         $data = $this->requiredArray(['donor_id']);
+        $donor_id = (int)$data['donor_id'];
 
-        $Badalorders = $this->BadalOrder->getBadalOrderPendingForOthers($data['donor_id']);
-        if ($Badalorders == null) $this->error('No data');
-        $this->response($Badalorders);
+        // pagination params
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 5;
+
+        if ($page < 1) $page = 1;
+        if ($per_page < 1 || $per_page > 100) $per_page = 5;
+
+        $offset = ($page - 1) * $per_page;
+
+        // data
+        $orders = $this->BadalOrder->getBadalOrderPendingForOthersPaginated(
+            $donor_id,
+            $offset,
+            $per_page
+        );
+
+        if (empty($orders)) {
+            $this->error('No data');
+        }
+
+        // count
+        $totalRow = $this->BadalOrder->getBadalOrderPendingForOthersCount($donor_id);
+        $totalRecords = $totalRow ? (int)$totalRow->total : 0;
+        $totalPages = ceil($totalRecords / $per_page);
+
+        $response = [
+            'data' => $orders,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $per_page,
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages,
+                'has_more' => ($offset + $per_page) < $totalRecords,
+            ],
+        ];
+
+        $this->response($response);
     }
+
 
     /**
      * update completed of badalOrder by id 
@@ -778,18 +815,20 @@ class Orders extends ApiController
 
     /**
      * update order payment with details
-     * @param integer $donor_id
-     * @param integer $total
+     * 
+     * @param integer $order_id
      * @return response
      */
     public function updateOrderPayment()
     {
         $data = $this->requiredArray(['order_id']);
 
-        // get Order
         if (!$order = $this->projectModel->getOrderById($data['order_id'])) {
-            $this->error('Something went wrong while trying to save your order');
+            $this->error('Order not found');
         }
+
+        $image['filename'] = false;
+        $payfortResponse = null;
 
         if ($order->payment_method_id != 1 && empty($_POST['payfortResponse'])) {
             $this->error('payfortResponse is required');
@@ -797,39 +836,61 @@ class Orders extends ApiController
             $payfortResponse = json_decode($_POST['payfortResponse']);
         }
 
-        $image['filename'] = false;
-
         if ($order->payment_method_id == 1) {
-            // validate image
-            if ($_FILES['bankImage']['error'] == 0) {
+            if (isset($_FILES['bankImage']) && $_FILES['bankImage']['error'] == 0) {
                 $image = uploadImage('bankImage', APPROOT . '/media/files/banktransfer/', 5000000, false);
-                if (!empty($image['error'])) $this->error(implode(',', $image['error']));
+                if (!empty($image['error'])) {
+                    $this->error(implode(',', $image['error']));
+                }
             } else {
-                $this->error('please upload an image');
+                $this->error('Please upload bank transfer image');
             }
         }
+
+        $newStatus = 0;
         if (isset($payfortResponse->status) && ($payfortResponse->status == 14)) {
-            $order->status = 1;
-        } else {
-            $order->status  = 0;
+            $newStatus = 1;
         }
 
-        // update order with bank image if exists
         if ($image['filename']) {
             $hash = $order->hash ?: null;
             $order->image = $image['filename'];
             $order->hash = $hash;
+
             if (!$this->projectModel->updateOrderHash((array)$order)) {
-                $this->error('Something went wrong while trying to save the order Donations');
+                $this->error('Failed to update bank transfer image');
             }
-            $order->hash = $hash->hash;
         }
+
+        $order->status = $newStatus;
+        $order->meta = json_encode($payfortResponse);
+
         $this->projectModel->updateOrderMeta((array)$order);
 
+        if ($newStatus == 1) {
+
+            $hasBadalOrders = $this->model->orderHasBadalOrders($order->order_id);
+
+            if ($hasBadalOrders) {
+                $updatedBadal = $this->model->updateBadalOrdersStatusByOrderId($order->order_id, 1);
+
+                if (!$updatedBadal) {
+                    error_log("Warning: Failed to update badal_orders for order_id: {$order->order_id}");
+                }
+            }
+
+            $updatedDonations = $this->projectModel->updateDonationStatus($order->order_id, 1);
+
+            if (!$updatedDonations) {
+                error_log("Warning: Failed to update donations for order_id: {$order->order_id}");
+            }
+        }
 
         $donor = $this->donorModel->getDonorId($order->donor_id);
-        if (!$donor) $this->error('Donor Not found');
-        //prepare notification data
+        if (!$donor) {
+            $this->error('Donor not found');
+        }
+
         $messaging = $this->model('Messaging');
         $sendData = [
             'mailto' => $donor->email,
@@ -839,41 +900,43 @@ class Orders extends ApiController
             'total' => $order->total,
             'project' => $order->projects,
             'donor' => $order->donor_name,
-            'subject' => 'تم تسجيل طلب جديد ',
-            'msg' => "تم تسجيل طلب جديد بمشروع : {$order->projects} <br/> بقيمة : " . $order->total,
-
+            'subject' => 'تم تسجيل طلب جديد',
+            'msg' => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
         ];
-        //send Email and SMS confirmation
+
         $messaging->donationAdminNotify($sendData);
-        // send message to donor 
         $messaging->donationDonorNotify($sendData);
-        // send whatsapp message to donor 
-        $messaging->ReciveOrdersApp("$sendData[mobile]", "$sendData[donor]", " $sendData[identifier]",  "$_POST[total]", 'namaa.sa');
-        // send sms if payment = 14 (payfort)
+        $messaging->ReciveOrdersApp($sendData['mobile'], $sendData['donor'], $sendData['identifier'], $order->total, 'namaa.sa');
+
         if (@$payfortResponse->status == 14) {
-            $order = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
-            if (!$order->notified) {
+            $orderCheck = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
+
+            if (!$orderCheck->notified) {
                 $messaging->sendConfirmation($sendData);
                 $this->projectModel->notified($order->order_id);
 
-                // queue the subsitudes in queue table
                 require_once APPROOT . '/admin/models/QueueTable.php';
                 $queueTable = new QueueTable();
-                $subsitutes = $queueTable->getAvailableSubsitudes();
+                $substitutes = $queueTable->getAvailableSubsitudes();
 
-                if ($subsitutes) {
-                    foreach ($subsitutes as $subsitute) {
-                        $QueuData['order_id'] = $order->order_id;
-                        $QueuData['substitute_id'] = $subsitute->substitute_id;
-                        $queueTable->addqueue($QueuData);
+                if ($substitutes) {
+                    foreach ($substitutes as $substitute) {
+                        $queueData = [
+                            'order_id' => $order->order_id,
+                            'substitute_id' => $substitute->substitute_id
+                        ];
+                        $queueTable->addqueue($queueData);
                     }
                 }
             }
         }
 
-        
-
-        //retrive all data
-        $this->response($order);
+        $this->response([
+            'status' => 'success',
+            'message' => 'Order payment updated successfully',
+            'order' => $order,
+            'badal_updated' => $hasBadalOrders ?? false,
+            'order_status' => $newStatus == 1 ? 'paid' : 'pending'
+        ]);
     }
 }

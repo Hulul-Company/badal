@@ -86,7 +86,6 @@ class Substitutes extends ApiController
      */
     public function listWithOrders()
     {
-        // read params (GET) — لو عندك request helper غير $_GET استبدلها
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 20;
 

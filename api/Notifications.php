@@ -10,11 +10,39 @@ class Notifications extends ApiController
         $this->model = $this->model('Notification');
     }
 
-    public function list(){
+    public function list()
+    {
         $donor_id = $this->required('donor_id');
-        $notfications = $this->model->getNotfications($donor_id);
-        $this->response($notfications);
+
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $per_page = isset($_GET['per_page']) ? (int) $_GET['per_page'] : 5;
+
+        if ($page < 1) $page = 1;
+        if ($per_page < 1) $per_page = 5;
+
+        $offset = ($page - 1) * $per_page;
+
+        $notfications = $this->model->getNotficationsPaginate($donor_id, $offset, $per_page);
+
+        $totalRecordsObj = $this->model->getCountNotfication($donor_id);
+        $totalRecords = $totalRecordsObj ? (int) $totalRecordsObj->count : 0;
+
+        $totalPages = $per_page > 0 ? (int) ceil($totalRecords / $per_page) : 0;
+
+        $response = [
+            'data' => $notfications,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $per_page,
+                'total_records' => $totalRecords,
+                'total_pages' => $totalPages,
+                'has_more' => ($page < $totalPages)
+            ],
+        ];
+
+        $this->response($response);
     }
+
 
     public function listPaginate(){
         $donor_id = $this->required('donor_id');

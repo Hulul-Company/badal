@@ -181,8 +181,8 @@ class Offer extends Model
                     AND `status` <> 2 ';
         $this->db->query($query);
         $this->db->bind(':substitute_id', $data['substitute_id']);
-        $this->db->bind(':start_at', strtotime($data['start_at']) - ($data['offer_time']*60*60));
-        $this->db->bind(':end_at', strtotime($data['start_at']) + ($data['offer_time']*60*60));
+        $this->db->bind(':start_at', strtotime($data['start_at']) - ($data['offer_time'] * 60 * 60));
+        $this->db->bind(':end_at', strtotime($data['start_at']) + ($data['offer_time'] * 60 * 60));
         return $this->db->resultSet();
     }
 
@@ -190,12 +190,104 @@ class Offer extends Model
      * get project by project_id
      * @param Array $data
      */
-    public function getProject($project_id )
+    public function getProject($project_id)
     {
-        $query = 'SELECT `min_price` FROM  `projects`  WHERE `project_id` = '. $project_id .' AND  `status` <> 2 ';
+        $query = 'SELECT `min_price` FROM  `projects`  WHERE `project_id` = ' . $project_id . ' AND  `status` <> 2 ';
         $this->db->query($query);
         return $this->db->single();
     }
+    /**
+     * get offers by substitute (paginated)
+     */
+    public function getOffersBySubstitutePaginated($substitute_id, $offset = 0, $limit = 5)
+    {
+        $query = "SELECT badal_offers.*, 
+        projects.`name` AS project_name, 
+        substitutes.full_name, 
+        substitutes.nationality, 
+        substitutes.gender,
+        FROM_UNIXTIME(badal_offers.start_at) AS start_at,
+        (SELECT ROUND(AVG(`badal_review`.rate) * 2 , 0) / 2
+            FROM `badal_review`, `badal_orders`
+            WHERE `badal_orders`.`substitute_id` = `badal_offers`.`substitute_id`
+            AND `badal_review`.`badal_id` = `badal_orders`.`badal_id`
+        ) AS rate
+    FROM badal_offers
+        INNER JOIN substitutes ON badal_offers.substitute_id = substitutes.substitute_id
+        INNER JOIN projects ON badal_offers.project_id = projects.project_id
+    WHERE badal_offers.substitute_id = :substitute_id
+        AND badal_offers.status IN (0,1)
+    ORDER BY badal_offers.create_date DESC
+    LIMIT :offset, :limit";
 
+        $this->db->query($query);
+        $this->db->bind(':substitute_id', (int)$substitute_id);
+        $this->db->bind(':offset', (int)$offset);
+        $this->db->bind(':limit', (int)$limit);
 
+        return $this->db->resultSet();
+    }
+    /**
+     * count offers by substitute
+     */
+    public function getOffersBySubstituteCount($substitute_id)
+    {
+        $query = "
+        SELECT COUNT(*) AS total
+        FROM badal_offers
+        WHERE substitute_id = :substitute_id
+        AND status IN (0,1)
+    ";
+
+        $this->db->query($query);
+        $this->db->bind(':substitute_id', (int)$substitute_id);
+        return $this->db->single();
+    }
+    public function getOffersPaginated($offset = 0, $limit = 10)
+    {
+        $query = "SELECT badal_offers.*, 
+        projects.name AS project_name, 
+        substitutes.full_name, 
+        CONCAT('" . MEDIAURL . "/../files/substitutes/', substitutes.image ) AS substitute_image,
+        substitutes.nationality, 
+        substitutes.gender,
+        substitutes.languages,
+        FROM_UNIXTIME(badal_offers.start_at) AS start_at,
+        (
+            SELECT ROUND(AVG(badal_review.rate) * 2, 0) / 2
+            FROM badal_review, badal_orders
+            WHERE badal_orders.substitute_id = badal_offers.substitute_id
+            AND badal_review.badal_id = badal_orders.badal_id
+        ) AS rate
+    FROM badal_offers
+        INNER JOIN substitutes ON badal_offers.substitute_id = substitutes.substitute_id
+        INNER JOIN projects ON badal_offers.project_id = projects.project_id
+    WHERE badal_offers.status = 1
+        AND badal_offers.start_at > :now
+        AND substitutes.status = 1
+    ORDER BY badal_offers.create_date DESC
+    LIMIT :offset, :limit";
+
+        $this->db->query($query);
+        $this->db->bind(':now', time());
+        $this->db->bind(':offset', (int)$offset);
+        $this->db->bind(':limit', (int)$limit);
+
+        return $this->db->resultSet();
+    }
+
+    public function getOffersCount()
+    {
+        $query = "SELECT COUNT(*) AS total
+        FROM badal_offers
+        INNER JOIN substitutes ON badal_offers.substitute_id = substitutes.substitute_id
+        WHERE badal_offers.status = 1
+        AND badal_offers.start_at > :now
+        AND substitutes.status = 1";
+
+        $this->db->query($query);
+        $this->db->bind(':now', time());
+
+        return $this->db->single();
+    }
 }

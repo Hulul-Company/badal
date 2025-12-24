@@ -487,4 +487,231 @@ class Order extends ModelAdmin
             return false;
         }
     }
+    /**
+     * Get orders (paginated)
+     *
+     * @param string $cond    SQL fragment for WHERE / JOINs (same style used in getOrders)
+     * @param array  $bind    associative binds for the query (e.g. [':some' => $val])
+     * @param int    $start   offset (0-based)
+     * @param int    $count   rows per page
+     * @return array
+     */
+    public function getOrdersPaginated($cond = '', $bind = [], $start = 0, $count = 20)
+    {
+        // build base query (same as getOrders)
+        $query = 'SELECT ord.*, payment_methods.title AS payment_method, donors.full_name AS donor, donors.mobile,
+        (SELECT name FROM statuses WHERE ord.status_id = statuses.status_id) AS status_name 
+        FROM orders ord , donors, payment_methods ' . $cond . ' ORDER BY ord.create_date DESC ';
+
+        // append LIMIT with named params
+        $query .= ' LIMIT :start, :count';
+
+        $this->db->query($query);
+
+        // bind regular binds if any
+        if (!empty($bind) && is_array($bind)) {
+            foreach ($bind as $key => $value) {
+                // allow keys with or without ":" prefix
+                $param = (strpos($key, ':') === 0) ? $key : ':' . $key;
+                $this->db->bind($param, $value);
+            }
+        }
+
+        // bind limit params as integers
+        $this->db->bind(':start', (int)$start);
+        $this->db->bind(':count', (int)$count);
+
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Count orders matching a condition
+     *
+     * @param string $cond
+     * @param array $bind
+     * @return int
+     */
+    public function getOrdersCount($cond = '', $bind = [])
+    {
+        $query = 'SELECT COUNT(DISTINCT ord.order_id) AS total FROM ' . $this->table . ' ord
+        INNER JOIN donors ON donors.donor_id = ord.donor_id
+        INNER JOIN payment_methods pm ON ord.payment_method_id = pm.payment_id
+        WHERE ord.status <> 2 ' . $cond;
+
+        $this->db->query($query);
+
+        if (!empty($bind) && is_array($bind)) {
+            foreach ($bind as $key => $value) {
+                $param = (strpos($key, ':') === 0) ? $key : ':' . $key;
+                $this->db->bind($param, $value);
+            }
+        }
+
+        $row = $this->db->single();
+        return $row ? (int)$row->total : 0;
+    }
+    public function updateBadalOrdersStatusByOrderId($order_id, $status)
+    {
+        $query = 'UPDATE `badal_orders` 
+                  SET `status` = :status, 
+                      `modified_date` = :modified_date
+                  WHERE `order_id` = :order_id';
+
+        $this->db->query($query);
+        $this->db->bind(':status', (int)$status);
+        $this->db->bind(':order_id', (int)$order_id);
+        $this->db->bind(':modified_date', time());
+
+        if ($this->db->excute()) {
+            return $this->db->rowCount();
+        } else {
+            return false;
+        }
+    }
+    /**
+     * Get badal_orders count by order_id
+     * 
+     * @param int $order_id
+     * @return int
+     */
+    public function getBadalOrdersCountByOrderId($order_id)
+    {
+        $query = 'SELECT COUNT(*) as total 
+                  FROM `badal_orders` 
+                  WHERE `order_id` = :order_id';
+
+        $this->db->query($query);
+        $this->db->bind(':order_id', (int)$order_id);
+        $result = $this->db->single();
+
+        return isset($result->total) ? (int)$result->total : 0;
+    }
+
+    /**
+     * Get badal_orders by order_id (all statuses)
+     * 
+     * @param int $order_id
+     * @return array
+     */
+    public function getAllBadalOrdersByOrderId($order_id)
+    {
+        $query = 'SELECT * FROM `badal_orders` 
+                  WHERE `order_id` = :order_id 
+                  ORDER BY `badal_id`';
+
+        $this->db->query($query);
+        $this->db->bind(':order_id', (int)$order_id);
+
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Check if order has badal orders
+     * 
+     * @param int $order_id
+     * @return bool
+     */
+    public function orderHasBadalOrders($order_id)
+    {
+        return $this->getBadalOrdersCountByOrderId($order_id) > 0;
+    }
+
+
+    /**
+     * Get paginated pending badal orders for others (excluding donor's own orders)
+     * 
+     * @param int $donor_id
+     * @param int $offset
+     * @param int $limit
+     * @return array
+     */
+    public function getBadalOrderPendingForOthersPaginated($donor_id, $offset = 0, $limit = 5)
+    {
+        $query = '  
+        SELECT
+            projects.name AS project_name,
+            projects.project_id,
+            CONCAT("' . MEDIAURL . '/", projects.secondary_image ) AS secondary_image,
+            orders.order_id,
+            orders.donor_id,
+            orders.order_identifier, orders.donor_name,
+            badal_orders.*,
+            orders.total AS total,
+            badal_orders.amount AS amount,
+            FROM_UNIXTIME(badal_orders.create_date) AS time
+        FROM
+            badal_orders
+        JOIN
+            projects ON badal_orders.project_id = projects.project_id
+        JOIN
+            orders ON orders.order_id = badal_orders.order_id
+        JOIN
+            donors ON donors.donor_id = ' . (int)$donor_id . '
+        WHERE
+            badal_orders.substitute_id IS NULL
+            AND badal_orders.status = 1
+            AND orders.donor_id != ' . (int)$donor_id . '
+            AND EXISTS (
+                SELECT 1
+                FROM substitutes
+                WHERE
+                    substitutes.phone = donors.mobile
+                    AND badal_orders.gender = substitutes.gender
+                    AND FIND_IN_SET(badal_orders.language, substitutes.languages)
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM requests 
+                        WHERE
+                            requests.badal_id = badal_orders.badal_id
+                            AND requests.substitute_id = substitutes.substitute_id
+                    )
+            )
+        ORDER BY badal_orders.create_date DESC
+        LIMIT ' . (int)$offset . ', ' . (int)$limit;
+
+        $this->db->query($query);
+        return $this->db->resultSet();
+    }
+
+    /**
+     * Get count of pending badal orders for others
+     * 
+     * @param int $donor_id
+     * @return object
+     */
+    public function getBadalOrderPendingForOthersCount($donor_id)
+    {
+        $query = '  
+        SELECT COUNT(*) as total
+        FROM
+            badal_orders
+        JOIN
+            projects ON badal_orders.project_id = projects.project_id
+        JOIN
+            orders ON orders.order_id = badal_orders.order_id
+        JOIN
+            donors ON donors.donor_id = ' . (int)$donor_id . '
+        WHERE
+            badal_orders.substitute_id IS NULL
+            AND badal_orders.status = 1
+            AND orders.donor_id != ' . (int)$donor_id . '
+            AND EXISTS (
+                SELECT 1
+                FROM substitutes
+                WHERE
+                    substitutes.phone = donors.mobile
+                    AND badal_orders.gender = substitutes.gender
+                    AND FIND_IN_SET(badal_orders.language, substitutes.languages)
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM requests 
+                        WHERE
+                            requests.badal_id = badal_orders.badal_id
+                            AND requests.substitute_id = substitutes.substitute_id
+                    )
+            )';
+
+        $this->db->query($query);
+        return $this->db->single();
+    }
 }
