@@ -453,38 +453,46 @@ class Orders extends ApiController
      *
      * @return response
      */
+    // public function pendingOrders()
+    // {
+    //     $data = $this->requiredArray(['donor_id']);
+    //     $Badalorders = $this->BadalOrder->getBadalOrderPendingForOthers($data['donor_id']);
+    //     if ($Badalorders == null) $this->error('No data');
+    //     $this->response($Badalorders);
+    // }
     public function pendingOrders()
     {
-        // required param
         $data = $this->requiredArray(['donor_id']);
         $donor_id = (int)$data['donor_id'];
 
         // pagination params
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
         $per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 5;
-
         if ($page < 1) $page = 1;
         if ($per_page < 1 || $per_page > 100) $per_page = 5;
-
         $offset = ($page - 1) * $per_page;
 
-        // data
-        $orders = $this->BadalOrder->getBadalOrderPendingForOthersPaginated(
-            $donor_id,
-            $offset,
-            $per_page
-        );
+        $orders = $this->BadalOrder->getBadalOrderPendingForOthers($donor_id, $offset, $per_page);
 
         if (empty($orders)) {
-            $this->error('No data');
+            $this->response([
+                'data' => [],
+                'meta' => [
+                    'page' => $page,
+                    'per_page' => $per_page,
+                    'total_records' => 0,
+                    'total_pages' => 0,
+                    'has_more' => false
+                ]
+            ]);
+            return;
         }
 
-        // count
         $totalRow = $this->BadalOrder->getBadalOrderPendingForOthersCount($donor_id);
         $totalRecords = $totalRow ? (int)$totalRow->total : 0;
-        $totalPages = ceil($totalRecords / $per_page);
+        $totalPages = $per_page ? (int) ceil($totalRecords / $per_page) : 0;
 
-        $response = [
+        $this->response([
             'data' => $orders,
             'meta' => [
                 'page' => $page,
@@ -493,10 +501,9 @@ class Orders extends ApiController
                 'total_pages' => $totalPages,
                 'has_more' => ($offset + $per_page) < $totalRecords,
             ],
-        ];
-
-        $this->response($response);
+        ]);
     }
+
 
 
     /**
