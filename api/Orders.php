@@ -131,13 +131,22 @@ class Orders extends ApiController
         $donor = $this->donorModel->getDonorId($data['donor_id']);
         if (!$donor) $this->error('Donor Not found');
         if ($data['payment_method_id'] == 1) {
-            // validate image
-            if ($_FILES['bankImage']['error'] == 0) {
-                $image = uploadImage('bankImage', APPROOT . '/media/files/banktransfer/', 5000000, false);
-                if (!empty($image['error'])) $this->error(implode(',', $image['error']));
-            } else {
-                $this->error('please upload an image');
+            if (empty($_FILES['bankImage']) || $_FILES['bankImage']['error'] !== 0) {
+                if ($_FILES['bankImage']['error'] ?? 0 === UPLOAD_ERR_NO_FILE) {
+                    $this->error('please upload bank transfer proof image');
+                } else {
+                    $this->error('Error uploading image: ' . ($_FILES['bankImage']['error'] ?? 'unknown'));
+                }
             }
+
+            $image = uploadImage('bankImage', APPROOT . '/media/files/banktransfer/', 5000000, false);
+            if (!empty($image['error'])) {
+                $this->error('Upload failed: ' . implode(',', $image['error']));
+            }
+
+            $image['filename'] = $image['filename']; 
+        } else {
+            $image['filename'] = false;
         }
         $payment = $this->projectModel->getPaymentKey($data['payment_method_id'])[0];
         if (!$payment) $this->error('Payment Not found');
@@ -460,6 +469,7 @@ class Orders extends ApiController
     //     if ($Badalorders == null) $this->error('No data');
     //     $this->response($Badalorders);
     // }
+
     public function pendingOrders()
     {
         $data = $this->requiredArray(['donor_id']);

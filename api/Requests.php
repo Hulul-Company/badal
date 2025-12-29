@@ -89,7 +89,7 @@ class Requests extends ApiController
         }
         $request = $this->model->addBadalRequest($data); // add request 
         $substitute = $this->model->getrequestByIdWithSubstitute($request); //get Selected substitute
-        if($substitute->substitute_status != 1 ){
+        if($substitute->status != 1 ){
             $this->error("الحساب متوقف عن الخدمة");
         }
         // send messages  (email - sms - whatsapp)

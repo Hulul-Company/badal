@@ -627,91 +627,88 @@ class Order extends ModelAdmin
      */
     public function getBadalOrderPendingForOthersPaginated($donor_id, $offset = 0, $limit = 5)
     {
-        $query = '  
-        SELECT
-            projects.name AS project_name,
-            projects.project_id,
-            CONCAT("' . MEDIAURL . '/", projects.secondary_image ) AS secondary_image,
-            orders.order_id,
-            orders.donor_id,
-            orders.order_identifier, orders.donor_name,
-            badal_orders.*,
-            orders.total AS total,
-            badal_orders.amount AS amount,
-            FROM_UNIXTIME(badal_orders.create_date) AS time
-        FROM
-            badal_orders
-        JOIN
-            projects ON badal_orders.project_id = projects.project_id
-        JOIN
-            orders ON orders.order_id = badal_orders.order_id
-        JOIN
-            donors ON donors.donor_id = ' . (int)$donor_id . '
-        WHERE
-            badal_orders.substitute_id IS NULL
-            AND badal_orders.status = 1
-            AND orders.donor_id != ' . (int)$donor_id . '
-            AND EXISTS (
-                SELECT 1
-                FROM substitutes
-                WHERE
-                    substitutes.phone = donors.mobile
-                    AND badal_orders.gender = substitutes.gender
-                    AND FIND_IN_SET(badal_orders.language, substitutes.languages)
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM requests 
-                        WHERE
-                            requests.badal_id = badal_orders.badal_id
-                            AND requests.substitute_id = substitutes.substitute_id
-                    )
-            )
-        ORDER BY badal_orders.create_date DESC
-        LIMIT ' . (int)$offset . ', ' . (int)$limit;
+        $this->db->query('SELECT mobile FROM donors WHERE donor_id = :donor_id LIMIT 1');
+        $this->db->bind(':donor_id', (int)$donor_id);
+        $donor = $this->db->single();
+        $donor_mobile = $donor ? $donor->mobile : null;
+
+        if (!$donor_mobile) return [];
+
+        $query = "
+    SELECT
+        p.name AS project_name,
+        p.project_id,
+        CONCAT('" . MEDIAURL . "/', p.secondary_image) AS secondary_image,
+        o.order_id,
+        o.donor_id,
+        o.order_identifier,
+        o.donor_name,
+        bo.*,
+        o.total AS total,
+        bo.amount AS amount,
+        FROM_UNIXTIME(bo.create_date) AS time
+    FROM badal_orders bo
+    JOIN projects p ON bo.project_id = p.project_id
+    JOIN orders o ON o.order_id = bo.order_id
+    WHERE
+        bo.substitute_id IS NULL
+        AND bo.status = 1
+        AND o.donor_id != :current_donor_id
+        AND EXISTS (
+            SELECT 1 FROM substitutes s
+            WHERE s.phone = :donor_mobile
+              AND bo.gender = s.gender
+              AND FIND_IN_SET(bo.language, s.languages)
+              AND NOT EXISTS (
+                  SELECT 1 FROM requests r
+                  WHERE r.badal_id = bo.badal_id
+                    AND r.substitute_id = s.substitute_id
+              )
+        )
+    ORDER BY bo.create_date DESC
+    LIMIT :offset, :limit
+    ";
 
         $this->db->query($query);
+        $this->db->bind(':current_donor_id', (int)$donor_id);
+        $this->db->bind(':donor_mobile', $donor_mobile);
+        $this->db->bind(':offset', (int)$offset);
+        $this->db->bind(':limit', (int)$limit);
+
         return $this->db->resultSet();
     }
-
-    /**
-     * Get count of pending badal orders for others
-     * 
-     * @param int $donor_id
-     * @return object
-     */
     public function getBadalOrderPendingForOthersCount($donor_id)
     {
-        $query = '  
-        SELECT COUNT(*) as total
-        FROM
-            badal_orders
-        JOIN
-            projects ON badal_orders.project_id = projects.project_id
-        JOIN
-            orders ON orders.order_id = badal_orders.order_id
-        JOIN
-            donors ON donors.donor_id = ' . (int)$donor_id . '
-        WHERE
-            badal_orders.substitute_id IS NULL
-            AND badal_orders.status = 1
-            AND orders.donor_id != ' . (int)$donor_id . '
-            AND EXISTS (
-                SELECT 1
-                FROM substitutes
-                WHERE
-                    substitutes.phone = donors.mobile
-                    AND badal_orders.gender = substitutes.gender
-                    AND FIND_IN_SET(badal_orders.language, substitutes.languages)
-                    AND NOT EXISTS (
-                        SELECT 1
-                        FROM requests 
-                        WHERE
-                            requests.badal_id = badal_orders.badal_id
-                            AND requests.substitute_id = substitutes.substitute_id
-                    )
-            )';
+        $this->db->query('SELECT mobile FROM donors WHERE donor_id = :donor_id LIMIT 1');
+        $this->db->bind(':donor_id', (int)$donor_id);
+        $donor = $this->db->single();
+        if (!$donor) return (object)['total' => 0];
+
+        $query = "
+    SELECT COUNT(*) AS total
+    FROM badal_orders bo
+    JOIN orders o ON o.order_id = bo.order_id
+    WHERE
+        bo.substitute_id IS NULL
+        AND bo.status = 1
+        AND o.donor_id != :current_donor_id
+        AND EXISTS (
+            SELECT 1 FROM substitutes s
+            WHERE s.phone = :donor_mobile
+              AND bo.gender = s.gender
+              AND FIND_IN_SET(bo.language, s.languages)
+              AND NOT EXISTS (
+                  SELECT 1 FROM requests r
+                  WHERE r.badal_id = bo.badal_id
+                    AND r.substitute_id = s.substitute_id
+              )
+        )
+    ";
 
         $this->db->query($query);
+        $this->db->bind(':current_donor_id', (int)$donor_id);
+        $this->db->bind(':donor_mobile', $donor->mobile);
+
         return $this->db->single();
     }
 }
