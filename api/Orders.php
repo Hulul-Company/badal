@@ -180,6 +180,7 @@ class Orders extends ApiController
             'status' =>  $status,
             'app' => 'kafara'
         ];
+        
 
         //loop through donations
         foreach ($donations as $key => $donation) {
@@ -250,14 +251,8 @@ class Orders extends ApiController
             }
         }
         // update order with bank image if exists
-        if ($image['filename']) {
-            $hash = $this->projectModel->getOrderByHash($orderdata['hash']) ?: null;
-            $orderdata['image'] = $image['filename'];
-            $orderdata['hash'] = $hash;
-            if (!$this->projectModel->updateOrderHash($orderdata)) {
-                $this->error('Something went wrong while trying to save the order Donations');
-            }
-            $orderdata['hash'] = $hash->hash;
+        if (isset($donation->bank_image)) {
+            $orderdata['bank_image'] = $donation->bank_image;
         }
 
         $this->projectModel->updateOrderMeta($orderdata);
@@ -303,9 +298,20 @@ class Orders extends ApiController
             }
         }
 
-        //retrive all data
-        $this->response($orderdata);
+        $responseData = $orderdata;
+
+        if ($image['filename']) {
+            $responseData['bank_image_filename'] = $image['filename'];
+            $responseData['bank_image_url'] = URLROOT . '/media/files/banktransfer/' . $image['filename'];
+        }
+
+        $this->response([
+            'success' => true,
+            'message' => 'Order created successfully',
+            'data' => $responseData
+        ]);
     }
+   
 
     public function test()
     {
