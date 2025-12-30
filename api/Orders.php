@@ -301,7 +301,7 @@ class Orders extends ApiController
         $responseData = $orderdata;
 
         if ($image['filename']) {
-            $responseData['bank_image_filename'] = $image['filename'];
+            $responseData['image'] = $image['filename'];
             $responseData['bank_image_url'] = URLROOT . '/media/files/banktransfer/' . $image['filename'];
         }
 
