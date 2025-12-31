@@ -255,8 +255,16 @@ class Orders extends ApiController
             $orderdata['bank_image'] = $donation->bank_image;
         }
 
+        // ✅ Update order with bank image if exists
+        if ($image['filename']) {
+            $orderdata['banktransferproof'] = $image['filename'];
+
+            // استخدم Model بدل db مباشرة
+            $this->projectModel->updateOrderBankProof($orderdata['order_id'], $image['filename']);
+        }
+
         $this->projectModel->updateOrderMeta($orderdata);
-        //prepare notification data
+                //prepare notification data
         $messaging = $this->model('Messaging');
         $sendData = [
             'mailto' => $donor->email,
@@ -301,7 +309,7 @@ class Orders extends ApiController
         $responseData = $orderdata;
 
         if ($image['filename']) {
-            $responseData['image'] = $image['filename'];
+            $responseData['banktransferproof'] = $image['filename'];
             $responseData['bank_image_url'] = URLROOT . '/media/files/banktransfer/' . $image['filename'];
         }
 

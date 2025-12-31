@@ -213,7 +213,6 @@ class Project extends Model
         $query = 'UPDATE orders SET banktransferproof = :banktransferproof, payment_method_key = :payment_method_key, modified_date = :modified_date';
         
         $query .= ' WHERE hash = :hash';
-        dd( $data);
         $this->db->query($query);
         // binding values
         $this->db->bind(':banktransferproof', $data['image']);
@@ -221,6 +220,27 @@ class Project extends Model
         $this->db->bind(':hash', $data['hash']->hash);
         $this->db->bind(':modified_date', time());
         // excute
+        if ($this->db->excute()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    /**
+     * Update order bank transfer proof
+     * @param int $order_id
+     * @param string $filename
+     * @return boolean
+     */
+    public function updateOrderBankProof($order_id, $filename)
+    {
+        $query = 'UPDATE orders SET banktransferproof = :banktransferproof, modified_date = :modified_date WHERE order_id = :order_id';
+
+        $this->db->query($query);
+        $this->db->bind(':order_id', $order_id);
+        $this->db->bind(':banktransferproof', $filename);
+        $this->db->bind(':modified_date', time());
+
         if ($this->db->excute()) {
             return true;
         } else {
