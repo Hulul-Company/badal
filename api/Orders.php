@@ -259,7 +259,6 @@ class Orders extends ApiController
         if ($image['filename']) {
             $orderdata['banktransferproof'] = $image['filename'];
 
-            // استخدم Model بدل db مباشرة
             $this->projectModel->updateOrderBankProof($orderdata['order_id'], $image['filename']);
         }
 
@@ -353,15 +352,12 @@ class Orders extends ApiController
     {
         $data = $this->requiredArray(['donor_id', 'status']);
 
-        // ✅ معالجة Pagination Parameters
         isset($_POST['start']) ? $start = (int) $_POST['start'] : $start = 0;
         isset($_POST['count']) ? $count = (int) $_POST['count'] : $count = 20;
 
-        // ✅ التحقق من القيم
         if ($start < 0) $start = 0;
         if ($count < 1 || $count > 100) $count = 20;
 
-        // ✅ جلب البيانات مع الـ Pagination
         if ($data['status'] == 3) {
             $Badalorders = $this->BadalOrder->getBadalOrderDonorComplete(
                 $data['donor_id'],
@@ -382,10 +378,8 @@ class Orders extends ApiController
             $this->error('No data');
         }
 
-        // ✅ جلب إجمالي العدد للـ Pagination
         $total = $this->BadalOrder->getBadalOrderDonorCount($data['donor_id'], $data['status']);
 
-        // ✅ إضافة معلومات Pagination للاستجابة
         $response = [
             'status' => 'success',
             'code' => 200,
@@ -421,25 +415,20 @@ class Orders extends ApiController
     {
         $data = $this->requiredArray(['substitute_id', 'status']);
 
-        // ✅ معالجة Pagination Parameters
         isset($_POST['start']) ? $data['start'] = (int) $_POST['start'] : $data['start'] = 0;
         isset($_POST['count']) ? $data['count'] = (int) $_POST['count'] : $data['count'] = 20;
 
-        // ✅ التحقق من القيم
         if ($data['start'] < 0) $data['start'] = 0;
         if ($data['count'] < 1 || $data['count'] > 100) $data['count'] = 20;
 
-        // ✅ جلب البيانات
         $Badalorders = $this->BadalOrder->getBadalOrderSubstitute($data);
 
         if ($Badalorders == null) {
             $this->error('No data');
         }
 
-        // ✅ جلب إجمالي العدد
         $total = $this->BadalOrder->getBadalOrderSubstituteCount($data);
 
-        // ✅ إضافة معلومات Pagination
         $response = [
             'status' => 'success',
             'code' => 200,
@@ -845,7 +834,7 @@ class Orders extends ApiController
 
 
     /**
-     * update order payment with details
+     * Update order payment with details
      * 
      * @param integer $order_id
      * @return response
@@ -858,60 +847,68 @@ class Orders extends ApiController
             $this->error('Order not found');
         }
 
-        $image['filename'] = false;
+        $imageFilename = false;
         $payfortResponse = null;
 
         if ($order->payment_method_id != 1 && empty($_POST['payfortResponse'])) {
-            $this->error('payfortResponse is required');
-        } else {
+            $this->error('payfortResponse is required for non-bank transfer payments');
+        } elseif (!empty($_POST['payfortResponse'])) {
             $payfortResponse = json_decode($_POST['payfortResponse']);
         }
 
         if ($order->payment_method_id == 1) {
-            if (isset($_FILES['bankImage']) && $_FILES['bankImage']['error'] == 0) {
-                $image = uploadImage('bankImage', APPROOT . '/media/files/banktransfer/', 5000000, false);
-                if (!empty($image['error'])) {
-                    $this->error(implode(',', $image['error']));
-                }
-            } else {
-                $this->error('Please upload bank transfer image');
+            if (!isset($_FILES['bankImage']) || $_FILES['bankImage']['error'] !== UPLOAD_ERR_OK) {
+                $this->error('Please upload a bank transfer proof image');
             }
+
+            $uploadResult = uploadImage(
+                'bankImage',
+                APPROOT . '/media/files/banktransfer/',
+                5000000,    
+                false       
+            );
+
+            if (!empty($uploadResult['error'])) {
+                $this->error('Image upload failed: ' . implode(', ', $uploadResult['error']));
+            }
+
+            $imageFilename = $uploadResult['filename'];
         }
 
         $newStatus = 0;
-        if (isset($payfortResponse->status) && ($payfortResponse->status == 14)) {
+        if ($payfortResponse && isset($payfortResponse->status) && $payfortResponse->status == 14) {
             $newStatus = 1;
         }
 
-        if ($image['filename']) {
-            $hash = $order->hash ?: null;
-            $order->image = $image['filename'];
-            $order->hash = $hash;
+        $updateData = [
+            'order_id'       => $order->order_id,
+            'status'         => $newStatus,
+            'meta'           => $payfortResponse ? json_encode($payfortResponse) : $order->meta,
+            'modified_date'  => time(),
+        ];
 
-            if (!$this->projectModel->updateOrderHash((array)$order)) {
-                $this->error('Failed to update bank transfer image');
+        if ($imageFilename) {
+            if (!$this->projectModel->updateOrderBankProof($order->order_id, $imageFilename)) {
+                $this->error('Failed to save bank transfer proof image');
             }
+            $updateData['banktransferproof'] = $imageFilename;
         }
 
-        $order->status = $newStatus;
-        $order->meta = json_encode($payfortResponse);
-
-        $this->projectModel->updateOrderMeta((array)$order);
+        if (!$this->projectModel->updateOrderMetaAuthorization((array)$updateData)) {
+            $this->error('Failed to update order payment details');
+        }
 
         if ($newStatus == 1) {
-
             $hasBadalOrders = $this->model->orderHasBadalOrders($order->order_id);
 
             if ($hasBadalOrders) {
                 $updatedBadal = $this->model->updateBadalOrdersStatusByOrderId($order->order_id, 1);
-
                 if (!$updatedBadal) {
                     error_log("Warning: Failed to update badal_orders for order_id: {$order->order_id}");
                 }
             }
 
             $updatedDonations = $this->projectModel->updateDonationStatus($order->order_id, 1);
-
             if (!$updatedDonations) {
                 error_log("Warning: Failed to update donations for order_id: {$order->order_id}");
             }
@@ -924,24 +921,23 @@ class Orders extends ApiController
 
         $messaging = $this->model('Messaging');
         $sendData = [
-            'mailto' => $donor->email,
-            'mobile' => $donor->mobile,
-            'identifier' => $order->order_identifier,
-            'order_id' => $order->order_id,
-            'total' => $order->total,
-            'project' => $order->projects,
-            'donor' => $order->donor_name,
-            'subject' => 'تم تسجيل طلب جديد',
-            'msg' => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
+            'mailto'         => $donor->email,
+            'mobile'         => $donor->mobile,
+            'identifier'     => $order->order_identifier,
+            'order_id'       => $order->order_id,
+            'total'          => $order->total,
+            'project'        => $order->projects,
+            'donor'          => $order->donor_name,
+            'subject'        => 'تم تسجيل طلب جديد',
+            'msg'            => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
         ];
 
         $messaging->donationAdminNotify($sendData);
         $messaging->donationDonorNotify($sendData);
         $messaging->ReciveOrdersApp($sendData['mobile'], $sendData['donor'], $sendData['identifier'], $order->total, 'namaa.sa');
 
-        if (@$payfortResponse->status == 14) {
+        if ($payfortResponse && @$payfortResponse->status == 14) {
             $orderCheck = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
-
             if (!$orderCheck->notified) {
                 $messaging->sendConfirmation($sendData);
                 $this->projectModel->notified($order->order_id);
@@ -952,22 +948,28 @@ class Orders extends ApiController
 
                 if ($substitutes) {
                     foreach ($substitutes as $substitute) {
-                        $queueData = [
-                            'order_id' => $order->order_id,
+                        $queueTable->addqueue([
+                            'order_id'      => $order->order_id,
                             'substitute_id' => $substitute->substitute_id
-                        ];
-                        $queueTable->addqueue($queueData);
+                        ]);
                     }
                 }
             }
         }
 
-        $this->response([
-            'status' => 'success',
-            'message' => 'Order payment updated successfully',
-            'order' => $order,
-            'badal_updated' => $hasBadalOrders ?? false,
-            'order_status' => $newStatus == 1 ? 'paid' : 'pending'
-        ]);
+        $response = [
+            'status'          => 'success',
+            'message'         => 'Order payment updated successfully',
+            'order'           => $order,
+            'badal_updated'   => $hasBadalOrders ?? false,
+            'order_status'    => $newStatus == 1 ? 'paid' : 'pending'
+        ];
+
+        if ($imageFilename) {
+            $response['banktransferproof'] = $imageFilename;
+            $response['bank_image_url'] = URLROOT . '/media/files/banktransfer/' . $imageFilename;
+        }
+
+        $this->response($response);
     }
 }
