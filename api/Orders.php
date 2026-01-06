@@ -639,19 +639,23 @@ class Orders extends ApiController
         // send messages  (email - sms - whatsapp)
         $messaging = $this->model('Messaging');
         $donor = $this->BadalOrder->getDonorByOrderID($data['order_id']);
+
         $sendData = [
-            'mailto'                => $donor->email,
-            'mobile'                => $donor->mobile,
-            'identifier'            => $donor->order_identifier,
-            'total'                 => $donor->total,
-            'project'               => $donor->projects,
-            'donor'                 => $donor->donor_name,
-            'behafeof'              => $donor->behafeof,
-            'substitute_name'       => $donor->substitute_name,
-            'notify_id'             => $donor->donor_id,
-            'notify'                => "تم بدء طلبك ",
+            'mailto'           => $donor->email,
+            'mobile'           => $donor->mobile,
+            'identifier'       => $donor->order_identifier,
+            'total'            => $donor->total,
+            'project'          => $donor->projects,
+            'donor'            => $donor->donor_name,
+            'behafeof'         => $donor->behafeof,
+            'substitute_name'  => $donor->substitute_name,
+            'notify_id'        => $donor->donor_id,
+            'type'             => 'start_order',  
         ];
-        // send messages
+
+        $sendData['title'] = "تم بدء تنفيذ طلبك";
+        $sendData['body']  = "بدأ البديل {$donor->substitute_name} تنفيذ طلبك نيابة عن {$donor->behafeof} في مشروع {$donor->projects}";
+
         $messaging->sendNotfication($sendData, 'start_order');
 
         $this->response($data['rituals']);
