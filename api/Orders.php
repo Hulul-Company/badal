@@ -650,11 +650,14 @@ class Orders extends ApiController
             'behafeof'         => $donor->behafeof,
             'substitute_name'  => $donor->substitute_name,
             'notify_id'        => $donor->donor_id,
-            'type'             => 'start_order',  
+            'type'             => 'start_order',
         ];
 
-        $sendData['title'] = "تم بدء تنفيذ طلبك";
-        $sendData['body']  = "بدأ البديل {$donor->substitute_name} تنفيذ طلبك نيابة عن {$donor->behafeof} في مشروع {$donor->projects}";
+        // الأهم: أضف 'notify' كعنوان الإشعار (الـ title) 
+        $sendData['notify'] = "تم بدء تنفيذ طلبك";  // ← ده اللي كان ناقص!
+
+        // اختياري: أضف body واضح (لو عايز تستخدمه في التطبيق)
+        $sendData['body'] = "بدأ البديل {$donor->substitute_name} تنفيذ طلبك نيابة عن {$donor->behafeof} في مشروع {$donor->projects}";
 
         $messaging->sendNotfication($sendData, 'start_order');
 
