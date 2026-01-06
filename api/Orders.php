@@ -263,6 +263,35 @@ class Orders extends ApiController
         }
 
         $this->projectModel->updateOrderMeta($orderdata);
+
+        if ($orderdata['app'] === 'badal') {
+            // جيب كل البدلاء النشطين
+            $substitutes = $this->model('Substitute')->getActiveSubstitutes(); // لازم تعمل الدالة دي في الموديل
+
+            if (!empty($substitutes)) {
+                $messaging = $this->model('Messaging');
+
+                foreach ($substitutes as $substitute) {
+                    // لو البديل عنده donor_id و fcm_token
+                    if ($substitute->donor_id && $substitute->fcm_token) {
+                        $sendData = [
+                            'notify_id' => $substitute->donor_id,
+                            'notify'    => "طلب بدل جديد متاح!", // العنوان
+                            'type'      => 'newOrder', // نفس الـ type عشان يستخدم الـ template الصح
+                            'mailto'    => $substitute->email ?? '',
+                            'mobile'    => $substitute->phone ?? '',
+                            'donor'     => $substitute->full_name ?? 'بديل',
+                            'project'   => $orderdata['projects'],
+                            'total'     => $orderdata['total'],
+                            'identifier' => $orderdata['order_identifier'],
+                        ];
+
+                        // إرسال الإشعار (FCM + SMS + WhatsApp لو مفعل)
+                        $messaging->sendNotfication($sendData, 'newOrder');
+                    }
+                }
+            }
+        }
                 //prepare notification data
         $messaging = $this->model('Messaging');
         $sendData = [
@@ -636,6 +665,7 @@ class Orders extends ApiController
         if (!empty($data['rituals'])) $Badalorders = $this->BadalOrder->updateBadalOrderStart($Badalorders->badal_id);
 
         if (!$Badalorders) $this->error('Not Found');
+
         // send messages  (email - sms - whatsapp)
         $messaging = $this->model('Messaging');
         $donor = $this->BadalOrder->getDonorByOrderID($data['order_id']);
@@ -653,10 +683,8 @@ class Orders extends ApiController
             'type'             => 'start_order',
         ];
 
-        // الأهم: أضف 'notify' كعنوان الإشعار (الـ title) 
-        $sendData['notify'] = "تم بدء تنفيذ طلبك";  // ← ده اللي كان ناقص!
+        $sendData['notify'] = "تم بدء تنفيذ طلبك";  
 
-        // اختياري: أضف body واضح (لو عايز تستخدمه في التطبيق)
         $sendData['body'] = "بدأ البديل {$donor->substitute_name} تنفيذ طلبك نيابة عن {$donor->behafeof} في مشروع {$donor->projects}";
 
         $messaging->sendNotfication($sendData, 'start_order');

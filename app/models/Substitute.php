@@ -281,4 +281,18 @@ class Substitute extends Model
         $this->db->excute();
         return $this->db->resultSet();
     }
+    public function getActiveSubstitutes()
+{
+    $query = "
+        SELECT s.*, d.donor_id, ft.fcm_token, d.email, d.mobile, d.full_name
+        FROM substitutes s
+        LEFT JOIN donors d ON s.phone = d.mobile AND d.is_substitute = 1
+        LEFT JOIN fcm_tokens ft ON ft.donor_id = d.donor_id
+        WHERE s.status = 1
+        AND ft.fcm_token IS NOT NULL
+    ";
+
+    $this->db->query($query);
+    return $this->db->resultSet();
+}
 }
