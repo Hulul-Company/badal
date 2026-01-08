@@ -265,19 +265,17 @@ class Orders extends ApiController
         $this->projectModel->updateOrderMeta($orderdata);
 
         if ($orderdata['app'] === 'badal') {
-            // جيب كل البدلاء النشطين
-            $substitutes = $this->model('Substitute')->getActiveSubstitutes(); // لازم تعمل الدالة دي في الموديل
+            $substitutes = $this->model('Substitute')->getActiveSubstitutes(); 
 
             if (!empty($substitutes)) {
                 $messaging = $this->model('Messaging');
 
                 foreach ($substitutes as $substitute) {
-                    // لو البديل عنده donor_id و fcm_token
                     if ($substitute->donor_id && $substitute->fcm_token) {
                         $sendData = [
                             'notify_id' => $substitute->donor_id,
-                            'notify'    => "طلب بدل جديد متاح!", // العنوان
-                            'type'      => 'newOrder', // نفس الـ type عشان يستخدم الـ template الصح
+                            'notify'    => "طلب بدل جديد متاح!", 
+                            'type'      => 'newOrder', 
                             'mailto'    => $substitute->email ?? '',
                             'mobile'    => $substitute->phone ?? '',
                             'donor'     => $substitute->full_name ?? 'بديل',
@@ -286,7 +284,6 @@ class Orders extends ApiController
                             'identifier' => $orderdata['order_identifier'],
                         ];
 
-                        // إرسال الإشعار (FCM + SMS + WhatsApp لو مفعل)
                         $messaging->sendNotfication($sendData, 'newOrder');
                     }
                 }
@@ -766,7 +763,7 @@ class Orders extends ApiController
     {
 
         $data = $this->requiredArray(['donor_id', 'total', 'donations', 'payment_method_id']);
-       
+
         $donor = $this->donorModel->getDonorId($data['donor_id']);
         if (!$donor) $this->error('Donor Not found');
 
@@ -776,24 +773,24 @@ class Orders extends ApiController
         //convert donation json object
         $donations = json_decode($data['donations']);
         if (empty($donations)) $this->error('Donations is empty');
-        $order_identifier = isset($payfortResponse->merchant_reference) ? $payfortResponse->merchant_reference : $this->projectModel->uniqNum();
+
+        $order_identifier = $this->projectModel->uniqNum();
 
         //prepar order data
         $orderdata = [
-            'order_identifier' => $order_identifier,
-            'payment_method_id' => $data['payment_method_id'],
+            'order_identifier'   => $order_identifier,
+            'payment_method_id'  => $payment->payment_id,
             'payment_method_key' => $payment->payment_key,
-            'projects' => '',
-            'total' => $data['total'],
-            'quantity' => 0,
-            'hash' => sha1(time() . rand(999, 999999)),
-            'projects_id' => '',
-            'donor_id' => $donor->donor_id,
-            'donor_name' => $donor->full_name,
-            'status' =>  0,
-            'app' => 'kafara'
+            'projects'           => '',
+            'total'              => $data['total'],
+            'quantity'           => 0,
+            'hash'               => sha1(time() . rand(999, 999999)),
+            'projects_id'        => '',
+            'donor_id'           => $donor->donor_id,
+            'donor_name'         => $donor->full_name,
+            'status'             => 0,
+            'app'                => 'kafara'
         ];
-
         //loop through donations
         foreach ($donations as $key => $donation) {
             $project = $this->projectModel->getProjectByIdApp($donation->project_id);
@@ -884,53 +881,64 @@ class Orders extends ApiController
 
         $imageFilename = false;
         $payfortResponse = null;
+        $newPaymentMethodId = null;
+        $newPaymentMethodKey = null;
 
-        if ($order->payment_method_id != 1 && empty($_POST['payfortResponse'])) {
-            $this->error('payfortResponse is required for non-bank transfer payments');
-        } elseif (!empty($_POST['payfortResponse'])) {
-            $payfortResponse = json_decode($_POST['payfortResponse']);
+        if (!empty($_POST['payment_method_id'])) {
+            $newPayment = $this->projectModel->getPaymentKey($_POST['payment_method_id'])[0];
+            //                                                      ^^^^^^^^^^^^^^^^^^^^^^^
+            if (!$newPayment) {
+                $this->error('Invalid payment method');
+            }
+            $newPaymentMethodId = $newPayment->payment_id;
+            $newPaymentMethodKey = $newPayment->payment_key;
         }
 
-        if ($order->payment_method_id == 1) {
+        if (!empty($_POST['payfortResponse'])) {
+            $payfortResponse = json_decode($_POST['payfortResponse'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->error('Invalid payfortResponse JSON');
+            }
+        }
+
+        if ($order->payment_method_id == 1 || ($newPaymentMethodId == 1)) {
             if (!isset($_FILES['bankImage']) || $_FILES['bankImage']['error'] !== UPLOAD_ERR_OK) {
                 $this->error('Please upload a bank transfer proof image');
             }
 
-            $uploadResult = uploadImage(
-                'bankImage',
-                APPROOT . '/media/files/banktransfer/',
-                5000000,    
-                false       
-            );
-
+            $uploadResult = uploadImage('bankImage', APPROOT . '/media/files/banktransfer/', 5000000, false);
             if (!empty($uploadResult['error'])) {
                 $this->error('Image upload failed: ' . implode(', ', $uploadResult['error']));
             }
-
             $imageFilename = $uploadResult['filename'];
         }
 
-        $newStatus = 0;
-        if ($payfortResponse && isset($payfortResponse->status) && $payfortResponse->status == 14) {
+        $newStatus = $order->status;
+        if ($payfortResponse && isset($payfortResponse['status']) && $payfortResponse['status'] == 14) {
             $newStatus = 1;
         }
 
-        $updateData = [
-            'order_id'       => $order->order_id,
+        $updateFields = [
             'status'         => $newStatus,
             'meta'           => $payfortResponse ? json_encode($payfortResponse) : $order->meta,
             'modified_date'  => time(),
         ];
 
-        if ($imageFilename) {
-            if (!$this->projectModel->updateOrderBankProof($order->order_id, $imageFilename)) {
-                $this->error('Failed to save bank transfer proof image');
-            }
-            $updateData['banktransferproof'] = $imageFilename;
+        if ($newPaymentMethodId) {
+            $updateFields['payment_method_id'] = $newPaymentMethodId;
+            $updateFields['payment_method_key'] = $newPaymentMethodKey;
         }
 
-        if (!$this->projectModel->updateOrderMetaAuthorization((array)$updateData)) {
-            $this->error('Failed to update order payment details');
+        if ($imageFilename) {
+            $updateFields['banktransferproof'] = $imageFilename;
+        }
+
+        if (!$this->projectModel->updateOrderMetaAuthorization($updateFields + ['order_id' => $order->order_id])) {
+            $this->error('Failed to update order');
+        }
+        $updatedOrder = $this->projectModel->getOrderById($order->order_id);
+        if (!$updatedOrder) {
+            $this->error('Failed to reload updated order');
         }
 
         if ($newStatus == 1) {
@@ -995,7 +1003,7 @@ class Orders extends ApiController
         $response = [
             'status'          => 'success',
             'message'         => 'Order payment updated successfully',
-            'order'           => $order,
+            'order'           => $updatedOrder,
             'badal_updated'   => $hasBadalOrders ?? false,
             'order_status'    => $newStatus == 1 ? 'paid' : 'pending'
         ];
@@ -1005,6 +1013,11 @@ class Orders extends ApiController
             $response['bank_image_url'] = URLROOT . '/media/files/banktransfer/' . $imageFilename;
         }
 
+        if (!empty($_POST['payment_method_id'])) {
+            $response['payment_method_updated'] = true;
+            $response['new_payment_method_id'] = $newPaymentMethodId;
+            $response['new_payment_method_key'] = $newPaymentMethodKey;
+        }
         $this->response($response);
     }
 }

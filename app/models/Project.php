@@ -285,21 +285,39 @@ class Project extends Model
 
     public function updateOrderMetaAuthorization($data)
     {
-        $query = 'UPDATE orders SET meta = :meta, modified_date = :modified_date';
-        if (isset($data['app']) && !empty($data['app'])) $query .= ', app =:app ';
+        $query = 'UPDATE orders SET 
+              meta = :meta, 
+              status = :status, 
+              modified_date = :modified_date';
+
+        if (isset($data['payment_method_id'])) {
+            $query .= ', payment_method_id = :payment_method_id';
+        }
+        if (isset($data['payment_method_key'])) {
+            $query .= ', payment_method_key = :payment_method_key';
+        }
+        if (isset($data['banktransferproof'])) {
+            $query .= ', banktransferproof = :banktransferproof';
+        }
+        if (isset($data['app'])) {
+            $query .= ', app = :app';
+        }
+
         $query .= ' WHERE order_id = :order_id';
+
         $this->db->query($query);
-        // binding values
+
         $this->db->bind(':order_id', $data['order_id']);
         $this->db->bind(':meta', $data['meta']);
+        $this->db->bind(':status', $data['status']);
         $this->db->bind(':modified_date', time());
-        if (isset($data['app']) && !empty($data['app'])) $this->db->bind(':app', $data['app']);
-        // excute
-        if ($this->db->excute()) {
-            return true;
-        } else {
-            return false;
-        }
+
+        if (isset($data['payment_method_id'])) $this->db->bind(':payment_method_id', $data['payment_method_id']);
+        if (isset($data['payment_method_key'])) $this->db->bind(':payment_method_key', $data['payment_method_key']);
+        if (isset($data['banktransferproof'])) $this->db->bind(':banktransferproof', $data['banktransferproof']);
+        if (isset($data['app'])) $this->db->bind(':app', $data['app']);
+
+        return $this->db->excute();
     }
 
     /**
