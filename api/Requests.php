@@ -206,7 +206,7 @@ class Requests extends ApiController
 
         $this->messaging->sendNotfication($sendData, 'selectRequest');
 
-        $donor = $this->model->getDonorByOrderID($order->order_id);
+        $donor = $this->badalOrder->getDonorByOrderID($order->order_id);
         if ($donor) {
             $donorData = [
                 'mailto'            => $donor->email,
