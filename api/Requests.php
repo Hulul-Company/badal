@@ -123,68 +123,111 @@ class Requests extends ApiController
      *@param integar $request_id
      * @return response
      */
+    // public function select()
+    // {
+    //     $request_id = $this->required('request_id');
+    //     // get request  
+    //     $request = $this->model->getRequestById($request_id);
+    //     if ($request == null) $this->error("request not found");
+    //     // if ($request->is_selected == 1) $this->response($request, 200, 'Already selected');
+    //     else {
+    //         // select request
+    //         $updateRequest = $this->model->selectRequest($request_id);
+    //         // update BadalOrder Substiute_id
+    //         $updateRequest = $this->model->updateBadalOrder($request);
+    //         if (!$updateRequest) {
+    //             $this->error("There is a problem .. Please try again");
+    //         }
+    //         // delete all request with same day 
+    //         $deleteRequest = $this->model->deleteSameDateRequest($request);
+
+    //         $order = $this->model->getOrderByBadalID($request->badal_id); // get orderb badal id
+    //         // get subsitude with its  donor id
+    //         $substitute = $this->model->getSubstituteByID($request->substitute_id); //get Selected substitute
+    //         // send messages  (email - sms - whatsapp)
+    //         $sendData = [
+    //             'mailto'            => $substitute->email,
+    //             'mobile'            => $substitute->phone,
+    //             'identifier'        => $order->order_identifier,
+    //             'total'             => $order->total,
+    //             'project'           => $order->projects,
+    //             'donor'             => $order->donor_name,
+    //             'substitute_name'   => $substitute->full_name,
+    //             'behafeof'          => $order->behafeof,
+    //             'notify_id'          => $substitute->subsitude_donor_id,
+    //             'notify'            => "لقد تم اختيارك",
+    //         ];
+    //         $this->messaging->sendNotfication($sendData, 'selectRequest');
+
+    //         $this->updateQueueNotify($order);
+
+    //         if ($request == true) $this->response($request, 200, 'selected Sucessfully');
+    //         else {
+    //             $this->error("There is a problem .. Please try again");
+    //         }
+    //     }
+    // }
     public function select()
     {
         $request_id = $this->required('request_id');
+
         // get request  
         $request = $this->model->getRequestById($request_id);
         if ($request == null) $this->error("request not found");
-        // if ($request->is_selected == 1) $this->response($request, 200, 'Already selected');
-        else {
-            // select request
-            $updateRequest = $this->model->selectRequest($request_id);
-            // update BadalOrder Substiute_id
-            $updateRequest = $this->model->updateBadalOrder($request);
-            if (!$updateRequest) {
-                $this->error("There is a problem .. Please try again");
-            }
-            // delete all request with same day 
-            $deleteRequest = $this->model->deleteSameDateRequest($request);
 
-            $order = $this->model->getOrderByBadalID($request->badal_id); // get orderb badal id
-            // get subsitude with its  donor id
-            $substitute = $this->model->getSubstituteByID($request->substitute_id); //get Selected substitute
-            // send messages  (email - sms - whatsapp)
-            $sendData = [
-                'mailto'            => $substitute->email,
-                'mobile'            => $substitute->phone,
+        // select request
+        $updateRequest = $this->model->selectRequest($request_id);
+
+        // update BadalOrder Substiute_id
+        $updateRequest = $this->model->updateBadalOrder($request);
+        if (!$updateRequest) {
+            $this->error("There is a problem .. Please try again");
+        }
+
+        // delete all request with same day 
+        $deleteRequest = $this->model->deleteSameDateRequest($request);
+
+        $order = $this->model->getOrderByBadalID($request->badal_id);
+        $substitute = $this->model->getSubstituteByID($request->substitute_id);
+
+        $sendData = [
+            'mailto'            => $substitute->email,
+            'mobile'            => $substitute->phone,
+            'identifier'        => $order->order_identifier,
+            'total'             => $order->total,
+            'project'           => $order->projects,
+            'donor'             => $order->donor_name,
+            'substitute_name'   => $substitute->full_name,
+            'behafeof'          => $order->behafeof,
+            'notify_id'         => $substitute->subsitude_donor_id,
+            'notify'            => "لقد تم اختيارك",
+            'type'              => 'selectRequest',
+        ];
+
+        $this->messaging->sendNotfication($sendData, 'selectRequest');
+
+        $donor = $this->model->getDonorByOrderID($order->order_id);
+        if ($donor) {
+            $donorData = [
+                'mailto'            => $donor->email,
+                'mobile'            => $donor->mobile,
                 'identifier'        => $order->order_identifier,
                 'total'             => $order->total,
                 'project'           => $order->projects,
-                'donor'             => $order->donor_name,
+                'donor'             => $donor->full_name,
                 'substitute_name'   => $substitute->full_name,
                 'behafeof'          => $order->behafeof,
-                'notify_id'          => $substitute->subsitude_donor_id,
-                'notify'            => "لقد تم اختيارك",
+                'notify_id'         => $donor->donor_id,
+                'notify'            => "تم اختيار بديل لطلبك",
+                'type'              => 'substituteSelected',
             ];
-            $this->messaging->sendNotfication($sendData, 'selectRequest');
-            
-            $this->updateQueueNotify($order);
-            // cancel others request
-            // $otherRequests = $this->model->getOtherRequest($request->badal_id); // first select requests
-            // if($otherRequests){
-            //     foreach($otherRequests as $req){
-            //         $otherRequests = $this->model->cancelRequest($req->request_id); // cancel other request
-            //         // send notfications -----------------------
-            //         $substituteCancel = $this->model->getSubstituteByID($req->substitute_id); //get cancel substitute 
-            //         // send messages  (email - sms - whatsapp)
-            //         $sendData = [
-            //             'mailto' => $substituteCancel->email,
-            //             'mobile' => $substituteCancel->phone,
-            //             'identifier' => $order->order_identifier,
-            //             'total' => $order->total,
-            //             'project' => $order->projects,
-            //             'donor' => $substituteCancel->full_name,
-            //         ];
-            //         $this->messaging->sendNotfication($sendData, 'cancelRequest');
-            //     }
-            // }
-            // End ---------------------------
-            if ($request == true) $this->response($request, 200, 'selected Sucessfully');
-            else {
-                $this->error("There is a problem .. Please try again");
-            }
+
+            $this->messaging->sendNotfication($donorData, 'substituteSelected');
         }
+
+        $this->updateQueueNotify($order);
+
+        $this->response($request, 200, 'selected Successfully');
     }
 
     /**
