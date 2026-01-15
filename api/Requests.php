@@ -122,113 +122,51 @@ class Requests extends ApiController
      *@param integar $request_id
      * @return response
      */
-    // public function select()
-    // {
-    //     $request_id = $this->required('request_id');
-    //     // get request  
-    //     $request = $this->model->getRequestById($request_id);
-    //     if ($request == null) $this->error("request not found");
-    //     // if ($request->is_selected == 1) $this->response($request, 200, 'Already selected');
-    //     else {
-    //         // select request
-    //         $updateRequest = $this->model->selectRequest($request_id);
-    //         // update BadalOrder Substiute_id
-    //         $updateRequest = $this->model->updateBadalOrder($request);
-    //         if (!$updateRequest) {
-    //             $this->error("There is a problem .. Please try again");
-    //         }
-    //         // delete all request with same day 
-    //         $deleteRequest = $this->model->deleteSameDateRequest($request);
-
-    //         $order = $this->model->getOrderByBadalID($request->badal_id); // get orderb badal id
-    //         // get subsitude with its  donor id
-    //         $substitute = $this->model->getSubstituteByID($request->substitute_id); //get Selected substitute
-    //         // send messages  (email - sms - whatsapp)
-    //         $sendData = [
-    //             'mailto'            => $substitute->email,
-    //             'mobile'            => $substitute->phone,
-    //             'identifier'        => $order->order_identifier,
-    //             'total'             => $order->total,
-    //             'project'           => $order->projects,
-    //             'donor'             => $order->donor_name,
-    //             'substitute_name'   => $substitute->full_name,
-    //             'behafeof'          => $order->behafeof,
-    //             'notify_id'          => $substitute->subsitude_donor_id,
-    //             'notify'            => "لقد تم اختيارك",
-    //         ];
-    //         $this->messaging->sendNotfication($sendData, 'selectRequest');
-
-    //         $this->updateQueueNotify($order);
-
-    //         if ($request == true) $this->response($request, 200, 'selected Sucessfully');
-    //         else {
-    //             $this->error("There is a problem .. Please try again");
-    //         }
-    //     }
-    // }
     public function select()
     {
         $request_id = $this->required('request_id');
-
         // get request  
         $request = $this->model->getRequestById($request_id);
         if ($request == null) $this->error("request not found");
+        // if ($request->is_selected == 1) $this->response($request, 200, 'Already selected');
+        else {
+            // select request
+            $updateRequest = $this->model->selectRequest($request_id);
+            // update BadalOrder Substiute_id
+            $updateRequest = $this->model->updateBadalOrder($request);
+            if (!$updateRequest) {
+                $this->error("There is a problem .. Please try again");
+            }
+            // delete all request with same day 
+            $deleteRequest = $this->model->deleteSameDateRequest($request);
 
-        // select request
-        $updateRequest = $this->model->selectRequest($request_id);
-
-        // update BadalOrder Substiute_id
-        $updateRequest = $this->model->updateBadalOrder($request);
-        if (!$updateRequest) {
-            $this->error("There is a problem .. Please try again");
-        }
-
-        // delete all request with same day 
-        $deleteRequest = $this->model->deleteSameDateRequest($request);
-
-        $order = $this->model->getOrderByBadalID($request->badal_id);
-        $substitute = $this->model->getSubstituteByID($request->substitute_id);
-
-        $sendData = [
-            'mailto'            => $substitute->email,
-            'mobile'            => $substitute->phone,
-            'identifier'        => $order->order_identifier,
-            'total'             => $order->total,
-            'project'           => $order->projects,
-            'donor'             => $order->donor_name,
-            'substitute_name'   => $substitute->full_name,
-            'behafeof'          => $order->behafeof,
-            'notify_id'         => $substitute->subsitude_donor_id,
-            'notify'            => "لقد تم اختيارك",
-            'type'              => 'selectRequest',
-        ];
-
-        $this->messaging->sendNotfication($sendData, 'selectRequest');
-
-        $donor = $this->badalOrder->getDonorByOrderID($order->order_id);
-        if ($donor) {
-            $donorData = [
-                'mailto'            => $donor->email,
-                'mobile'            => $donor->mobile,
+            $order = $this->model->getOrderByBadalID($request->badal_id); // get orderb badal id
+            // get subsitude with its  donor id
+            $substitute = $this->model->getSubstituteByID($request->substitute_id); //get Selected substitute
+            // send messages  (email - sms - whatsapp)
+            $sendData = [
+                'mailto'            => $substitute->email,
+                'mobile'            => $substitute->phone,
                 'identifier'        => $order->order_identifier,
                 'total'             => $order->total,
                 'project'           => $order->projects,
-                'donor'             => $donor->full_name,
+                'donor'             => $order->donor_name,
                 'substitute_name'   => $substitute->full_name,
                 'behafeof'          => $order->behafeof,
-                'notify_id'         => $donor->donor_id,
-                'notify'            => "تم اختيار بديل لطلبك",
-                'type'              => 'substituteSelected',
+                'notify_id'          => $substitute->subsitude_donor_id,
+                'notify'            => "لقد تم اختيارك",
             ];
+            $this->messaging->sendNotfication($sendData, 'selectRequest');
 
-            $this->messaging->sendNotfication($donorData, 'substituteSelected');
+            $this->updateQueueNotify($order);
+
+            if ($request == true) $this->response($request, 200, 'selected Sucessfully');
+            else {
+                $this->error("There is a problem .. Please try again");
+            }
         }
-
-        $this->updateQueueNotify($order);
-
-        $this->response($request, 200, 'selected Successfully');
     }
-
+    
     /**
      * cancel request
      *@param integar $request_id
