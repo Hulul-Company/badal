@@ -17,38 +17,47 @@ class Tokens extends ApiController
 
         $title = $fields['title'];
         $body = $fields['body'];
+        $donor_id = isset($_POST['donor_id']) ? $_POST['donor_id'] : null;
+
+        if (!$donor_id) {
+            $this->error('donor_id is required');
+            return;
+        }
 
         $data = [
             'title'    => $title,
             'body'     => $body,
-            'donor_id' => $_POST['donor_id']
+            'donor_id' => $donor_id
         ];
 
         $jsonData = json_encode($data);
 
-
         $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => NOTIFICATION_DOMAIN . '/api/sendPush',
+        curl_setopt_array($curl, [
+            CURLOPT_URL            => NOTIFICATION_DOMAIN . '/api/sendPush',
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
+            CURLOPT_TIMEOUT        => 30,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => $jsonData,
-            CURLOPT_HTTPHEADER => array(
+            CURLOPT_CUSTOMREQUEST  => 'POST',
+            CURLOPT_POSTFIELDS     => $jsonData,
+            CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
-                'Cookie: PHPSESSID=d27f437f16b9e581731a8a46da6e1832'
-            ),
-        ));
+                'Accept: application/json',
+            ],
+        ]);
 
         $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         $err = curl_error($curl);
         curl_close($curl);
 
-        $this->response($data);
+        $this->response([
+            'success'      => $httpCode === 200,
+            'http_code'    => $httpCode,
+            'sent_data'    => $data,
+            'fcm_response' => json_decode($response, true),
+            'curl_error'   => $err ?: null
+        ]);
     }
 
 
