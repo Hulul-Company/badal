@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/../../../config/config.php';
 
-$basePath = dirname(__DIR__, 3); // /var/www/namaa/badal
+$basePath = dirname(__DIR__, 2); 
 
 // تحميل الـ Libraries
 require_once $basePath . '/app/libraries/Database.php';
