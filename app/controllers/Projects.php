@@ -20,6 +20,14 @@ class Projects extends Controller
             $fortParams = $objFort->processResponse();
         }
         unset($fortParams['url'], $fortParams['r'], $fortParams['access_code'], $fortParams['return_url'], $fortParams['language'], $fortParams['merchant_identifier']);
+        $order = $this->projectsModel->getSingle('*', ['order_identifier' => $fortParams['merchant_reference']], 'orders');
+
+        if ($order->webhook_processed && $order->status == 1) {
+            unset($_SESSION['cart']);
+            $_SESSION['payment']['msg'] = ' شكرا لتبرعك لدي ' . SITENAME;
+            flashRedirect('pages/thankyou/' . $order->hash . '/' . $order->total, 'msg', $_SESSION['payment']['msg'], 'alert alert-success');
+            return;
+        }
 
         $meta = json_encode($fortParams);
         ($fortParams['status'] == 14) ? $status = 1 : $status = 0;
