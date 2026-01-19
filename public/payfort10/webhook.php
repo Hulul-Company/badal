@@ -1,11 +1,13 @@
 <?php
 // webhook.php
 
-require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../../config/config.php';
 
+// تحميل الـ Libraries
 require_once APPROOT . '/libraries/Database.php';
 require_once APPROOT . '/libraries/Model.php';
 
+// تحميل الـ Models
 require_once APPROOT . '/models/Project.php';
 require_once APPROOT . '/models/Donor.php';
 require_once APPROOT . '/models/Messaging.php';
