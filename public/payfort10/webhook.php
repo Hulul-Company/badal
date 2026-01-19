@@ -1,7 +1,7 @@
 <?php
 // webhook.php
 
-require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../config/config.php';
 
 $basePath = dirname(__DIR__, 2); 
 
