@@ -3,14 +3,16 @@
 
 require_once __DIR__ . '/../../../config/config.php';
 
+$basePath = dirname(__DIR__, 3); // /var/www/namaa/badal
+
 // تحميل الـ Libraries
-require_once APPROOT . '/libraries/Database.php';
-require_once APPROOT . '/libraries/Model.php';
+require_once $basePath . '/app/libraries/Database.php';
+require_once $basePath . '/app/libraries/Model.php';
 
 // تحميل الـ Models
-require_once APPROOT . '/models/Project.php';
-require_once APPROOT . '/models/Donor.php';
-require_once APPROOT . '/models/Messaging.php';
+require_once $basePath . '/app/models/Project.php';
+require_once $basePath . '/app/models/Donor.php';
+require_once $basePath . '/app/models/Messaging.php';
 
 class PayfortWebhook
 {
