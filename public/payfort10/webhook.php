@@ -3,9 +3,9 @@
 
 require_once __DIR__ . '/../../config/config.php';
 
-$basePath = dirname(__DIR__, 2); 
+$basePath = dirname(__DIR__, 2);
 
-// تحميل الـ Libraries
+require_once  $basePath . '/libraries/ModelAdmin.php';
 require_once $basePath . '/libraries/Database.php';
 require_once $basePath . '/libraries/Model.php';
 
