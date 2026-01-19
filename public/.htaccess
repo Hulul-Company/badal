@@ -8,6 +8,11 @@
 
   RewriteBase /badal/public
 
+  # استثناء مجلد payfort10
+  RewriteCond %{REQUEST_URI} ^/payfort10/ [OR]
+  RewriteCond %{REQUEST_URI} ^/badal/public/payfort10/
+  RewriteRule ^ - [L]
+
   RewriteCond %{REQUEST_FILENAME} !-d
 
   RewriteCond %{REQUEST_FILENAME} !-f
