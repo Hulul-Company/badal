@@ -5,12 +5,11 @@ require_once __DIR__ . '/../../config/config.php';
 
 $basePath = dirname(__DIR__, 2);
 
-require_once  $basePath . '/libraries/ModelAdmin.php';
+require_once   $basePath . '/libraries/ModelAdmin.php';
 require_once $basePath . '/libraries/Database.php';
 require_once $basePath . '/libraries/Model.php';
 
-// تحميل الـ Models
-require_once $basePath . '/app/models/Project.php';
+ require_once $basePath . '/app/models/Project.php';
 require_once $basePath . '/app/models/Donor.php';
 require_once $basePath . '/app/models/Messaging.php';
 
