@@ -5,17 +5,17 @@ require_once __DIR__ . '/../../config/config.php';
 
 $basePath = dirname(__DIR__, 2);
 
-require_once   $basePath . '/libraries/ModelAdmin.php';
+require_once $basePath . '/libraries/ModelAdmin.php';
 require_once $basePath . '/libraries/Database.php';
 require_once $basePath . '/libraries/Model.php';
-
- require_once $basePath . '/app/models/Project.php';
+require_once $basePath . '/app/models/Project.php';
 require_once $basePath . '/app/models/Donor.php';
 require_once $basePath . '/app/models/Messaging.php';
 
 class PayfortWebhook
 {
-    private $SHAResponsePhrase = 'fvywgyswiui';
+    private $SHAResponsePhrase = '18rBnypfYP/04yelRkftp.$!'; 
+
     private $projectModel;
     private $donorModel;
     private $messagingModel;
@@ -30,7 +30,7 @@ class PayfortWebhook
     public function handle()
     {
         $fortParams = $_POST;
-        
+
         $this->log("Webhook Received: " . json_encode($fortParams));
 
         if (empty($fortParams)) {
@@ -41,7 +41,8 @@ class PayfortWebhook
 
         if (!$this->verifySignature($fortParams)) {
             $this->log("Invalid signature");
-            http_response_code(403);
+            http_response_code(200);
+            echo "OK";
             exit;
         }
 
@@ -56,13 +57,21 @@ class PayfortWebhook
         $responseSignature = $params['signature'] ?? '';
         unset($params['signature']);
 
+        $excludeParams = ['r', 'url', 'integration_type'];
+        foreach ($excludeParams as $param) {
+            unset($params[$param]);
+        }
+
         ksort($params);
         $shaString = '';
         foreach ($params as $k => $v) {
+            if ($v === '' || $v === null) continue; 
             $shaString .= "$k=$v";
         }
         $shaString = $this->SHAResponsePhrase . $shaString . $this->SHAResponsePhrase;
         $calculatedSignature = hash('sha256', $shaString);
+
+        $this->log("Expected Sig: $calculatedSignature | Received Sig: $responseSignature");
 
         return $responseSignature === $calculatedSignature;
     }
@@ -82,21 +91,24 @@ class PayfortWebhook
             return;
         }
 
-        if ($order->status == 1 && $isSuccess) {
-            $this->log("Order already processed: $merchantReference");
+        if ($order->webhook_processed) {
+            $this->log("Order already processed by webhook: $merchantReference");
             return;
         }
 
         $meta = json_encode($fortParams);
+        $newStatus = $isSuccess ? 1 : 0;
+
         $data = [
             'meta' => $meta,
             'hash' => $order->hash,
-            'status' => $isSuccess ? 1 : 0,
+            'status' => $newStatus,
         ];
 
         $this->projectModel->updateOrderMeta($data);
-        
-        $this->projectModel->updateDonationStatus($order->order_id, $isSuccess ? 1 : 0);
+        $this->projectModel->updateDonationStatus($order->order_id, $newStatus);
+
+        $this->markWebhookProcessed($order->order_id);
 
         if ($isSuccess && !$order->notified) {
             $this->sendNotifications($order);
@@ -105,10 +117,23 @@ class PayfortWebhook
         $this->log("Order processed: $merchantReference | Success: " . ($isSuccess ? 'YES' : 'NO'));
     }
 
+    private function markWebhookProcessed($orderId)
+    {
+        try {
+            $db = new Database();
+            $db->query("UPDATE orders SET webhook_processed = 1 WHERE order_id = :id");
+            $db->bind(':id', $orderId);
+            $db->execute();
+            $this->log("Marked webhook_processed for order: $orderId");
+        } catch (Exception $e) {
+            $this->log("Error marking webhook_processed: " . $e->getMessage());
+        }
+    }
+
     private function sendNotifications($order)
     {
         $donor = $this->projectModel->getSingle('*', ['donor_id' => $order->donor_id], 'donors');
-        
+
         if (!$donor) {
             $this->log("Donor not found for order: {$order->order_id}");
             return;
@@ -125,7 +150,6 @@ class PayfortWebhook
         ];
 
         $this->projectModel->notified($order->order_id);
-        
         $this->messagingModel->sendConfirmation($sendData);
         $this->messagingModel->sendGiftCard($order);
 
