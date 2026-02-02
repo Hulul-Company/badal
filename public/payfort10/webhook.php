@@ -14,7 +14,7 @@ require_once $basePath . '/app/models/Messaging.php';
 
 class PayfortWebhook
 {
-    private $SHAResponsePhrase = '18rBnypfYP/04yelRkftp.$!'; 
+    private $SHAResponsePhrase = '18rBnypfYP/04yelRkftp.$!';
 
     private $projectModel;
     private $donorModel;
@@ -29,24 +29,31 @@ class PayfortWebhook
 
     public function handle()
     {
-        $fortParams = $_POST;
+        try {
+            $fortParams = $_POST;
 
-        $this->log("Webhook Received: " . json_encode($fortParams));
+            $this->log("Webhook Received: " . json_encode($fortParams));
 
-        if (empty($fortParams)) {
-            $this->log("Empty webhook data");
-            http_response_code(400);
-            exit;
+            if (empty($fortParams)) {
+                $this->log("Empty webhook data");
+                http_response_code(200);
+                echo "OK";
+                exit;
+            }
+
+            if (!$this->verifySignature($fortParams)) {
+                $this->log("Invalid signature");
+                http_response_code(200);
+                echo "OK";
+                exit;
+            }
+
+            $this->processPayment($fortParams);
+        } catch (Exception $e) {
+            $this->log("HANDLE ERROR: " . $e->getMessage());
+        } catch (Error $e) {
+            $this->log("HANDLE FATAL: " . $e->getMessage());
         }
-
-        if (!$this->verifySignature($fortParams)) {
-            $this->log("Invalid signature");
-            http_response_code(200);
-            echo "OK";
-            exit;
-        }
-
-        $this->processPayment($fortParams);
 
         http_response_code(200);
         echo "OK";
@@ -65,7 +72,7 @@ class PayfortWebhook
         ksort($params);
         $shaString = '';
         foreach ($params as $k => $v) {
-            if ($v === '' || $v === null) continue; 
+            if ($v === '' || $v === null) continue;
             $shaString .= "$k=$v";
         }
         $shaString = $this->SHAResponsePhrase . $shaString . $this->SHAResponsePhrase;
@@ -120,11 +127,12 @@ class PayfortWebhook
     private function markWebhookProcessed($orderId)
     {
         try {
-            $db = new Database();
-            $db->query("UPDATE orders SET webhook_processed = 1 WHERE order_id = :id");
-            $db->bind(':id', $orderId);
-            $db->execute();
-            $this->log("Marked webhook_processed for order: $orderId");
+            $result = $this->projectModel->markWebhookProcessed($orderId);
+            if ($result) {
+                $this->log("Marked webhook_processed for order: $orderId");
+            } else {
+                $this->log("Failed to mark webhook_processed for order: $orderId");
+            }
         } catch (Exception $e) {
             $this->log("Error marking webhook_processed: " . $e->getMessage());
         }

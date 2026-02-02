@@ -1,5 +1,27 @@
 <?php
 
+/**
+ * Get order identifier by order_id
+ * @param int $order_id
+ * @return string
+ */
+if (!function_exists('orderIdentifier')) {
+    function orderIdentifier($order_id)
+    {
+        if (empty($order_id)) return '';
+
+        try {
+            $db = new Database();
+            $db->query("SELECT order_identifier FROM orders WHERE order_id = :id LIMIT 1");
+            $db->bind(':id', $order_id);
+            $result = $db->single();
+
+            return $result ? $result->order_identifier : '';
+        } catch (Exception $e) {
+            return '';
+        }
+    }
+}
 /*
  * Copyright (C) 2018 Easy CMS Framework Ahmed Elmahdy
  *
@@ -22,6 +44,8 @@ class Messaging extends ModelAdmin
     {
         parent::__construct('Donor');
     }
+
+    
 
     public function log()
     {

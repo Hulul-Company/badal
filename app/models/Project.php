@@ -692,7 +692,17 @@ class Project extends Model
             return false;
         }
     }
-
+    /**
+     * Mark order as processed by webhook
+     * @param int $order_id
+     * @return bool
+     */
+    public function markWebhookProcessed($order_id)
+    {
+        $this->db->query("UPDATE orders SET webhook_processed = 1 WHERE order_id = :id");
+        $this->db->bind(':id', $order_id);
+        return $this->db->excute();
+    }
     /**
      * get order By id
      *
