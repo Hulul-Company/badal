@@ -6,7 +6,7 @@ $SHAResponsePhrase = '18rBnypfYP/04yelRkftp.$!';
 
 // ✅ غير الـ merchant_reference للقيمة اللي رجعتلك من saveOrder
 $params = [
-    'merchant_reference' => '11907220044350',  // ← حط الـ order_identifier هنا
+    'merchant_reference' => '11907318106091',  // ← حط الـ order_identifier هنا
     'status'             => '14',
     'response_code'      => '14000',
     'amount'             => '10000',      // 100 ريال × 100 (PayFort بيبعت بالهللة)
