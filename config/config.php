@@ -32,16 +32,16 @@
 
 //Database Params
 
-// define('DB_HOST', '10.0.1.226');
-// define('DB_USER', 'root');
-// define('DB_PASS', 'admiN.321');
-// define('DB_NAME', 'snamaa_store');
+define('DB_HOST', '10.0.1.226');
+define('DB_USER', 'root');
+define('DB_PASS', 'admiN.321');
+define('DB_NAME', 'snamaa_store');
 
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'e1s_badal');
-define('DB_NAME', 'e1s_badal');
-define('DB_PASS', 'bK=75DBPEAt$oUvf');
+// define('DB_HOST', 'localhost');
+// define('DB_USER', 'e1s_badal');
+// define('DB_NAME', 'e1s_badal');
+// define('DB_PASS', 'bK=75DBPEAt$oUvf');
 
 
 define('VERSION', '2.0.0');
@@ -147,7 +147,4 @@ function root($path = null)
 {
 
     echo isset($path) ? URLROOT . "/" . $path : URLROOT;
-
 }
-
-
