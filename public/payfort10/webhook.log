@@ -1,0 +1,79 @@
+[2026-01-21 16:34:39] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"2000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:34:39] Invalid signature
+[2026-01-21 16:34:48] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"2000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:34:48] Invalid signature
+[2026-01-21 16:34:50] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"2000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:34:50] Invalid signature
+[2026-01-21 16:47:00] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"2000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:47:00] Invalid signature
+[2026-01-21 16:50:59] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"20000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:50:59] Processing: 11888195498077 | Status: 14
+[2026-01-21 16:50:59] Order already processed: 11888195498077
+[2026-01-21 16:55:26] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"20000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:55:26] Processing: 11888195498077 | Status: 14
+[2026-01-21 16:55:26] Order already processed: 11888195498077
+[2026-01-21 16:56:33] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"20000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:56:33] Processing: 11888195498077 | Status: 14
+[2026-01-21 16:56:41] Webhook Received: {"merchant_reference":"11888195498077","status":"14","response_code":"14000","amount":"20000","currency":"SAR","fort_id":"149295435400084008","payment_option":"VISA","customer_email":"test@test.com","signature":"f1f63b1ad9be8335bfd5560dcd64d1daa2a2b594da6deadac6543fd13555e968"}
+[2026-01-21 16:56:41] Processing: 11888195498077 | Status: 14
+[2026-01-21 16:56:41] Order already processed: 11888195498077
+[2026-02-02 14:00:17] Webhook Received: {"merchant_reference":"11900296749108","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1"}
+[2026-02-02 14:00:17] Expected Sig: 658ffd280438f367f7e86f8585c1810fbcec438edfa17222ae4023d002ec2e2c | Received Sig: a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1
+[2026-02-02 14:00:17] Invalid signature
+[2026-02-02 14:06:12] Webhook Received: {"merchant_reference":"11900296749108","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:06:12] Expected Sig: a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1 | Received Sig: a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1
+[2026-02-02 14:06:12] Processing: 11900296749108 | Status: 14
+[2026-02-02 14:06:20] Webhook Received: {"merchant_reference":"11900296749108","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:06:20] Expected Sig: a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1 | Received Sig: a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1
+[2026-02-02 14:06:20] Processing: 11900296749108 | Status: 14
+[2026-02-02 14:06:55] Webhook Received: {"merchant_reference":"11900304035026","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:06:55] Expected Sig: 1d6a1a3b76a1d08ec1a80e8260f8b3721f9abeb548c6f170cc48fef47ea79995 | Received Sig: a88e2a80c6ef60583ad8c7798003f42d419681fde7ebc2de8051734faae2d5e1
+[2026-02-02 14:06:55] Invalid signature
+[2026-02-02 14:10:41] Webhook Received: {"merchant_reference":"11900306065702","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"9fe4c265c67a13bf789d4a42f80d4b428df4fbe0db5c43a6c94282436e6abc26","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:10:41] Expected Sig: 9fe4c265c67a13bf789d4a42f80d4b428df4fbe0db5c43a6c94282436e6abc26 | Received Sig: 9fe4c265c67a13bf789d4a42f80d4b428df4fbe0db5c43a6c94282436e6abc26
+[2026-02-02 14:10:41] Processing: 11900306065702 | Status: 14
+[2026-02-02 14:10:59] Webhook Received: {"merchant_reference":"11900306065702","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"9fe4c265c67a13bf789d4a42f80d4b428df4fbe0db5c43a6c94282436e6abc26","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:10:59] Expected Sig: 9fe4c265c67a13bf789d4a42f80d4b428df4fbe0db5c43a6c94282436e6abc26 | Received Sig: 9fe4c265c67a13bf789d4a42f80d4b428df4fbe0db5c43a6c94282436e6abc26
+[2026-02-02 14:10:59] Processing: 11900306065702 | Status: 14
+[2026-02-02 14:18:29] Webhook Received: {"merchant_reference":"11900310617131","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"7102c4658e187366b12a10de1b3eff0f9cf13bb46591ab98963c13c046f3e3d0","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:18:29] Expected Sig: 7102c4658e187366b12a10de1b3eff0f9cf13bb46591ab98963c13c046f3e3d0 | Received Sig: 7102c4658e187366b12a10de1b3eff0f9cf13bb46591ab98963c13c046f3e3d0
+[2026-02-02 14:18:29] Processing: 11900310617131 | Status: 14
+[2026-02-02 14:18:30] HANDLE FATAL: Call to undefined method Database::execute()
+[2026-02-02 14:24:24] Webhook Received: {"merchant_reference":"11900314265549","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"bfae08fd0f5cd43c944457a486b38d223c2a30f38cf559ad5c7baf5b3e693d7a","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:24:24] Expected Sig: bfae08fd0f5cd43c944457a486b38d223c2a30f38cf559ad5c7baf5b3e693d7a | Received Sig: bfae08fd0f5cd43c944457a486b38d223c2a30f38cf559ad5c7baf5b3e693d7a
+[2026-02-02 14:24:24] Processing: 11900314265549 | Status: 14
+[2026-02-02 14:24:25] HANDLE FATAL: Cannot access protected property Project::$db
+[2026-02-02 14:28:29] Webhook Received: {"merchant_reference":"11900316779848","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"52f0ce4c008499bf8fff3c6d774a8b3bb8858e6ec54b8238996e2859c09c31c3","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:28:29] Expected Sig: 52f0ce4c008499bf8fff3c6d774a8b3bb8858e6ec54b8238996e2859c09c31c3 | Received Sig: 52f0ce4c008499bf8fff3c6d774a8b3bb8858e6ec54b8238996e2859c09c31c3
+[2026-02-02 14:28:29] Processing: 11900316779848 | Status: 14
+[2026-02-02 14:28:29] Marked webhook_processed for order: 86521
+[2026-02-02 14:28:29] HANDLE FATAL: Call to undefined function orderIdentifier()
+[2026-02-02 14:38:38] Webhook Received: {"merchant_reference":"11900322428161","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"aa3ef4750adb58df23dacb7e4330ed59043509fc1913e2236740676c13c58973","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-02 14:38:38] Expected Sig: aa3ef4750adb58df23dacb7e4330ed59043509fc1913e2236740676c13c58973 | Received Sig: aa3ef4750adb58df23dacb7e4330ed59043509fc1913e2236740676c13c58973
+[2026-02-02 14:38:38] Processing: 11900322428161 | Status: 14
+[2026-02-02 14:38:39] Marked webhook_processed for order: 86522
+[2026-02-02 14:38:39] HANDLE FATAL: Class "PHPMailer\PHPMailer\PHPMailer" not found
+[2026-02-09 16:37:36] Webhook Received: {"merchant_reference":"11906441576568","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"2f93a62fcd32ff47698c3b2017e3a5128fb40b5dfe3b55be3f011be1586bd9c2","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-09 16:37:36] Expected Sig: 2f93a62fcd32ff47698c3b2017e3a5128fb40b5dfe3b55be3f011be1586bd9c2 | Received Sig: 2f93a62fcd32ff47698c3b2017e3a5128fb40b5dfe3b55be3f011be1586bd9c2
+[2026-02-09 16:37:36] Processing: 11906441576568 | Status: 14
+[2026-02-09 16:37:36] Order found: ID=86523, Current Status=0, Webhook Processed=0
+[2026-02-09 16:37:36] Updating order meta...
+[2026-02-09 16:37:37] Order meta update: SUCCESS
+[2026-02-09 16:37:37] Updating donations for order_id: 86523 to status: 1
+[2026-02-09 16:37:37] Donations update: SUCCESS
+[2026-02-09 16:37:37] Marked webhook_processed for order: 86523
+[2026-02-09 16:37:37] HANDLE FATAL: Class "PHPMailer\PHPMailer\PHPMailer" not found
+[2026-02-09 16:43:10] Webhook Received: {"merchant_reference":"11906445517678","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"5a70da9c1dd6e6694a9703aaf50a2272bfc970d4f53de9683a18a89af0f04319","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-09 16:43:10] Expected Sig: 5a70da9c1dd6e6694a9703aaf50a2272bfc970d4f53de9683a18a89af0f04319 | Received Sig: 5a70da9c1dd6e6694a9703aaf50a2272bfc970d4f53de9683a18a89af0f04319
+[2026-02-09 16:43:10] Processing: 11906445517678 | Status: 14
+[2026-02-09 16:43:10] Marked webhook_processed for order: 86524
+[2026-02-09 16:43:10] HANDLE FATAL: Class "PHPMailer\PHPMailer\PHPMailer" not found
+[2026-02-09 17:14:02] Webhook Received: {"merchant_reference":"11906461349846","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"530c4a2a66cecd638284d3c5fd85b18ebed70de21309d395e8f74e1ef4f0c3bf","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-09 17:14:02] Expected Sig: 530c4a2a66cecd638284d3c5fd85b18ebed70de21309d395e8f74e1ef4f0c3bf | Received Sig: 530c4a2a66cecd638284d3c5fd85b18ebed70de21309d395e8f74e1ef4f0c3bf
+[2026-02-09 17:14:02] Processing: 11906461349846 | Status: 14
+[2026-02-09 17:14:02] Marked webhook_processed for order: 86525
+[2026-02-09 17:14:02] HANDLE FATAL: Class "PHPMailer\PHPMailer\PHPMailer" not found
+[2026-02-10 14:14:28] Webhook Received: {"merchant_reference":"11907220044350","status":"14","response_code":"14000","amount":"10000","currency":"SAR","fort_id":"999999999999999999","payment_option":"VISA","customer_email":"test@test.com","signature":"a2382304a9717f4d1f918f9a9c2a94de390cf3563e96c04ab9215bf86e907ddc","access_code":"8BvWIrSl2QmuMSeqC44m","command":"PURCHASE","language":"ar","merchant_identifier":"reBWkbQY","response_message":"Success"}
+[2026-02-10 14:14:28] Expected Sig: a2382304a9717f4d1f918f9a9c2a94de390cf3563e96c04ab9215bf86e907ddc | Received Sig: a2382304a9717f4d1f918f9a9c2a94de390cf3563e96c04ab9215bf86e907ddc
+[2026-02-10 14:14:28] Processing: 11907220044350 | Status: 14
+[2026-02-10 14:14:28] Order not found: 11907220044350
