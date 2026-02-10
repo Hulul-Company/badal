@@ -127,6 +127,16 @@ class Project extends Model
         return $results = $this->getWhereInTable('payment_methods', 'payment_id', [$payment_id]);
     }
 
+    public function updateBadalOrderByOrderId($orderId, $status)
+    {
+        $this->db->query("UPDATE badal_orders SET status = :status, modified_date = :modified_date WHERE order_id = :order_id AND status <> 2");
+        $this->db->bind(':status', $status);
+        $this->db->bind(':modified_date', time());
+        $this->db->bind(':order_id', $orderId);
+        $this->db->excute();
+        return $this->db->rowCount();
+    }
+
     /**
      * get Donation By Hash code
      *

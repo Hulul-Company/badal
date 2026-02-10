@@ -43,7 +43,9 @@ class Projects extends Controller
         ];
         //updating donation status in donation table
         $this->projectsModel->updateDonationStatus($order->order_id, $status);
-        $this->projectsModel->updateOrderMeta($data); //update donation meta and set status on order table
+        $this->projectsModel->updateOrderMeta($data);
+        $this->projectsModel->updateBadalOrderByOrderId($order->order_id, $status);
+        //update donation meta and set status on order table
         if ($status == 1) {
             //send Email and SMS confirmation
             $messaging = $this->model('Messaging');

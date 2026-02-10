@@ -114,6 +114,7 @@ class PayfortWebhook
 
         $this->projectModel->updateOrderMeta($data);
         $this->projectModel->updateDonationStatus($order->order_id, $newStatus);
+        $this->updateBadalOrderStatus($order->order_id, $newStatus);
 
         $this->markWebhookProcessed($order->order_id);
 
@@ -122,6 +123,19 @@ class PayfortWebhook
         }
 
         $this->log("Order processed: $merchantReference | Success: " . ($isSuccess ? 'YES' : 'NO'));
+    }
+    private function updateBadalOrderStatus($orderId, $status)
+    {
+        try {
+            $result = $this->projectModel->updateBadalOrderByOrderId($orderId, $status);
+            if ($result) {
+                $this->log("Updated badalorder status to $status for order_id: $orderId");
+            } else {
+                $this->log("No badalorder found or update failed for order_id: $orderId");
+            }
+        } catch (Exception $e) {
+            $this->log("Error updating badalorder: " . $e->getMessage());
+        }
     }
 
     private function markWebhookProcessed($orderId)
