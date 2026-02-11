@@ -35,7 +35,7 @@
 define('DB_HOST', '10.0.1.226');
 define('DB_USER', 'root');
 define('DB_PASS', 'admiN.321');
-define('DB_NAME', 'namaa_badal');
+define('DB_NAME', 'snamaa_store');
 
 
 // define('DB_HOST', 'localhost');
