@@ -37,7 +37,6 @@ define('DB_USER', 'root');
 define('DB_PASS', 'admiN.321');
 define('DB_NAME', 'namaa_badal');
 
-
 // define('DB_HOST', 'localhost');
 // define('DB_USER', 'e1s_badal');
 // define('DB_NAME', 'e1s_badal');
@@ -56,7 +55,7 @@ define('APPROOT', dirname(dirname(__FILE__)));
 
 // domain
 
-define('DOMAIN', 'https://namaa.sa');
+define('DOMAIN', 'https://namaa.sa/badal');
 // define('DOMAIN', 'http://localhost:8000');
 
 

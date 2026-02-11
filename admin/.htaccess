@@ -6,7 +6,7 @@
 
   RewriteEngine On
 
-  RewriteBase /admin
+RewriteBase /badal/admin
 
   RewriteCond %{REQUEST_FILENAME} !-d
 
