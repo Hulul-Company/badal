@@ -56,7 +56,7 @@ define('APPROOT', dirname(dirname(__FILE__)));
 
 // domain
 
-define('DOMAIN', 'https://badal.e1s.me');
+define('DOMAIN', 'https://namaa.sa/badal');
 // define('DOMAIN', 'http://localhost:8000');
 
 
