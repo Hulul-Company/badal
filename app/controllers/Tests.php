@@ -204,8 +204,8 @@ class Tests extends Controller
         curl_setopt($ch, CURLOPT_URL, $post);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); // ← أضف السطر ده
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE); // ← وده
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE); 
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, FALSE); 
 
         $respond = curl_exec($ch);
         $error = curl_error($ch);
@@ -217,6 +217,16 @@ class Tests extends Controller
             'error' => $error,
             'http_code' => $httpCode
         ]);
+    }
+    public function myip()
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://httpbin.org/get');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $respond = curl_exec($ch);
+        curl_close($ch);
+        dd(json_decode($respond));
     }
     public function respond()
 
