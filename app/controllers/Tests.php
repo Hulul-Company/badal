@@ -235,20 +235,30 @@ class Tests extends Controller
 
         $messaging = $this->model('Messaging');
 
+        // 👇 الداتا الصح
         $data = [
-            'order_id'   => '12345', // مهم
+            'order_id'   => '12345',
             'identifier' => 'TEST-123',
             'project'    => 'مشروع تجريبي',
             'total'      => '100',
         ];
 
-        $result = $messaging->ConfirmedOrdersApp('0597767751', 'Ahmed Test', (object)$data);
+        // 👇 استدعاء الفنكشن
+        $result = $messaging->ConfirmedOrdersApp(
+            '0597767751',      // رقم الموبايل
+            'Ahmed Test',      // الاسم
+            (object)$data      // تحويل لـ object
+        );
 
-        $response = json_decode($result, true);
+        // 👇 حل مشكلة الـ double JSON
+        $firstDecode = json_decode($result, true);
+        $finalResponse = is_string($firstDecode)
+            ? json_decode($firstDecode, true)
+            : $firstDecode;
 
         dd([
             'raw' => $result,
-            'decoded' => $response
+            'decoded' => $finalResponse
         ]);
     }
     public function respond()
