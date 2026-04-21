@@ -104,7 +104,7 @@ class Tests extends Controller
 
         // echo $messaging->ConfirmedOrdersApp('0597767751', 'مشروع صدقة جارية', '1984', '100');
 
-        $mobile = trim('0597767751');
+        $mobile = trim('0561611117');
 
         $donor = trim('Ahmed ');
 
@@ -228,39 +228,7 @@ class Tests extends Controller
         curl_close($ch);
         dd(json_decode($respond));
     }
-    public function whatsappTest()
-    {
-        error_reporting(E_ALL);
-        ini_set('display_errors', 1);
-
-        $messaging = $this->model('Messaging');
-
-        // 👇 الداتا الصح
-        $data = [
-            'order_id'   => '12345',
-            'identifier' => 'TEST-123',
-            'project'    => 'مشروع تجريبي',
-            'total'      => '100',
-        ];
-
-        // 👇 استدعاء الفنكشن
-        $result = $messaging->ConfirmedOrdersApp(
-            '0597767751',      // رقم الموبايل
-            'Ahmed Test',      // الاسم
-            (object)$data      // تحويل لـ object
-        );
-
-        // 👇 حل مشكلة الـ double JSON
-        $firstDecode = json_decode($result, true);
-        $finalResponse = is_string($firstDecode)
-            ? json_decode($firstDecode, true)
-            : $firstDecode;
-
-        dd([
-            'raw' => $result,
-            'decoded' => $finalResponse
-        ]);
-    }
+   
     public function respond()
 
     {
