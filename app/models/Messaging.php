@@ -132,33 +132,43 @@ class Messaging extends ModelAdmin
      */
     public function sendConfirmation($data)
     {
+        $debug = [];
+
+        $debug[] = "start";
+
         $msg_option = json_decode($this->getSettings('notifications')->value);
+        $debug[] = "settings loaded";
+
         if ($msg_option->confirm_enabled) {
-            // prepar EMAIL MSG
-            $msg = str_replace('[[name]]', $data['donor'], $msg_option->confirm_msg); // replace name string with user name
-            $msg = str_replace('[[identifier]]', $data['identifier'], $msg); // replace identifier string with identifier
-            $msg = str_replace('[[total]]', $data['total'], $msg); // replace total string with order total
-            $msg = str_replace('[[project]]', $data['project'], $msg); // replace project string with project name
-            $msg = str_replace('[[link]]', URLROOT .'/invoices/show/' . orderIdentifier(@$data['order_id'])??"", $msg); // replace link string with order invoices 
+            $debug[] = "email enabled";
 
-            
-            // send email
-            if (!empty($data['mailto'])) $this->Email($data['mailto'],  $msg_option->confirm_subject, $msg);
+            if (!empty($data['mailto'])) {
+                $this->Email($data['mailto'], $msg_option->confirm_subject, "test message");
+                $debug[] = "email sent";
+            }
         }
-        
+
         if ($msg_option->confirm_sms) {
-            $smsmsg = str_replace('[[name]]', $data['donor'], $msg_option->confirm_sms_msg); // replace name string with user name
-            $smsmsg = str_replace('[[identifier]]', $data['identifier'], $smsmsg); // replace identifier string with identifier
-            $smsmsg = str_replace('[[total]]', $data['total'], $smsmsg); // replace total string with order total
-            $smsmsg = str_replace('[[project]]', $data['project'], $smsmsg); // replace project string with project name
-            $smsmsg = str_replace('[[link]]', URLROOT .'/invoices/show/' . orderIdentifier($data['order_id'])??"", $smsmsg); // replace link string with order invoices 
+            $debug[] = "sms enabled";
 
-            // send SMS
-            $this->SMS($data['mobile'], $smsmsg);
+            $this->SMS($data['mobile'], "test sms");
+            $debug[] = "sms sent";
         }
-        // send whatsapp message confirmation
-        $this->ConfirmedOrdersApp("$data[mobile]", "$data[donor]", (object) $data);
-       
+
+        $debug[] = "before whatsapp";
+
+        try {
+            $this->ConfirmedOrdersApp(
+                $data['mobile'],
+                $data['project'],
+                (object) $data
+            );
+            $debug[] = "whatsapp sent";
+        } catch (Exception $e) {
+            $debug[] = "whatsapp error: " . $e->getMessage();
+        }
+
+        return $debug; // 🔥 أهم سطر
     }
 
     public function sendGiftCard(object $order)
