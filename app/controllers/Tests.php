@@ -115,6 +115,7 @@ class Tests extends Controller
         $project = 'مشروع صدقة جارية';
 
         $messaging->sendConfirmation([
+            'order_id' => 1,
 
             'mailto' => 'a6e6s1@gmail.com',
 
