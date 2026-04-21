@@ -158,19 +158,20 @@ class Messaging extends ModelAdmin
         $debug[] = "before whatsapp";
 
         try {
-            $this->ConfirmedOrdersApp(
+            $result = $this->ConfirmedOrdersApp(
                 $data['mobile'],
                 $data['project'],
                 (object) $data
             );
-            $debug[] = "whatsapp sent";
-        } catch (Exception $e) {
+
+            $debug[] = "whatsapp function executed";
+            $debug[] = $result;
+        } catch (\Throwable $e) {
             $debug[] = "whatsapp error: " . $e->getMessage();
         }
 
-        return $debug; // 🔥 أهم سطر
+        return $debug;
     }
-
     public function sendGiftCard(object $order)
     {
         $msg_option = json_decode($this->getSettings('notifications')->value);
