@@ -193,10 +193,15 @@ class Tests extends Controller
 
     public function sms()
     {
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
+
         $ch = curl_init();
         $password = '1a58b9ef96054f6433f5e2f4d30a93fe';
         $post = 'https://api.taqnyat.sa/v1/messages?bearerTokens=' . urlencode($password)
             . '&sender=NAMAA.SA&recipients=0597767751&body=test';
+
+        dd($post); // ← هيطبع الـ URL وييقف
 
         curl_setopt($ch, CURLOPT_URL, $post);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
@@ -210,7 +215,6 @@ class Tests extends Controller
         echo "Error: " . $error;
         die();
     }
-
     public function respond()
 
     {
