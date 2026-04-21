@@ -96,7 +96,7 @@ class Tests extends Controller
     {
         $messaging = $this->model('Messaging');
 
-        $messaging->sendConfirmation([
+        $result = $messaging->sendConfirmation([
             'order_id' => 1,
             'mailto' => 'a6e6s1@gmail.com',
             'mobile' => '0561611117',
@@ -106,7 +106,8 @@ class Tests extends Controller
             'donor' => 'Ahmed',
         ]);
 
-        echo "done";
+        header('Content-Type: application/json');
+        echo json_encode($result);
     }
 
 
