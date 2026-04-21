@@ -228,6 +228,25 @@ class Tests extends Controller
         curl_close($ch);
         dd(json_decode($respond));
     }
+    public function whatsappTest()
+    {
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
+
+        $messaging = $this->model('Messaging');
+
+        $data = [
+            'identifier' => 'TEST-123',
+            'project'    => 'مشروع تجريبي',
+            'total'      => '100',
+        ];
+
+        $result = $messaging->ConfirmedOrdersApp('0597767751', 'Ahmed Test', (object)$data);
+
+        dd([
+            'result' => $result
+        ]);
+    }
     public function respond()
 
     {
