@@ -113,6 +113,8 @@ function sendSMS($username, $password, $messageContent, $mobileNumber, $senderna
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
     }
     // excution    
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
     $respond = curl_exec($ch);
 
     // close connection    
