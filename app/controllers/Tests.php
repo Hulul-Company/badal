@@ -93,54 +93,20 @@ class Tests extends Controller
 
 
     public function whatsapp()
-
     {
-
-        // $modal = $this->model('Project');
-
         $messaging = $this->model('Messaging');
-
-        // echo $messaging->ReciveOrdersApp('0597767751', 'مشروع صدقة جارية', '1984', '100','namaa.sa');
-
-         echo $messaging->ConfirmedOrdersApp(
-            '0597767751',
-            'ahmed',
-            '1000',
-            '7002222222222222',
-            
-             'مشروع صدقة جارية', '1984', '100');
-
-        $mobile = trim('0561611117');
-
-        $donor = trim('Ahmed ');
-
-        $identifier = trim('7002222222222222');
-
-        $total = trim('1000');
-
-        $project = 'مشروع صدقة جارية';
 
         $messaging->sendConfirmation([
             'order_id' => 1,
-
             'mailto' => 'a6e6s1@gmail.com',
-
-            'mobile' => $mobile,
-
-            'identifier' => $identifier,
-
-            'total' => $total,
-
-            'project' => $project,
-
-            'donor' => $donor,
-
-            'subject' => 'تم تجربة طلب جديد ',
-
-            'msg' => "تم تسجيل طلب جديد بمشروع : ",
-
+            'mobile' => '0561611117',
+            'identifier' => '7002222222222222',
+            'total' => '1000',
+            'project' => 'مشروع صدقة جارية',
+            'donor' => 'Ahmed',
         ]);
 
+        echo "done";
     }
 
 

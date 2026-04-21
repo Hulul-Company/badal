@@ -157,7 +157,13 @@ class Messaging extends ModelAdmin
             $this->SMS($data['mobile'], $smsmsg);
         }
         // send whatsapp message confirmation
-        $this->ConfirmedOrdersApp("$data[mobile]", "$data[donor]", (object) $data);
+        //$this->ConfirmedOrdersApp("$data[mobile]", "$data[donor]", (object) $data);
+        $this->ConfirmedOrdersApp(
+            $data['mobile'],
+            $data['project'],
+            $data['identifier'],
+            $data['total']
+        );
     }
 
     public function sendGiftCard(object $order)
