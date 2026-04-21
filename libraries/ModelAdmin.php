@@ -584,7 +584,8 @@ class ModelAdmin
             ["name" => "name", "value" => $name],
             ["name" => "order", "value" => $order->identifier],
             ["name" => "amount", "value" => $order->total],
-            ["name" => "project", "value" => $order->projects??""],
+            //["name" => "project", "value" => $order->projects??""],
+            ["name" => "project", "value" => $order->project??""],
             ["name" => "link", "value" => URLROOT .'/invoices/show/' . orderIdentifier($order->order_id)??""],
         ];
         return sendWhatsAppParameter($whatsAppSettings->gateurl, $whatsAppSettings->accessToken, $whatsAppSettings->template_name_confirm_order, $whatsAppSettings->broadcast_name_confirm_order, $to, $parameters);
