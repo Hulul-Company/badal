@@ -193,7 +193,22 @@ class Tests extends Controller
 
     public function sms()
     {
-        // echo sendSMS('NAMAA.SA', '1a58b9ef96054f6433f5e2f4d30a93fe', 'testing sending', '0597767751', 'NAMAA.SA', 'https://api.taqnyat.sa/v1/messages', 'taqnyat');
+        $ch = curl_init();
+        $password = '1a58b9ef96054f6433f5e2f4d30a93fe';
+        $post = 'https://api.taqnyat.sa/v1/messages?bearerTokens=' . urlencode($password)
+            . '&sender=NAMAA.SA&recipients=0597767751&body=test';
+
+        curl_setopt($ch, CURLOPT_URL, $post);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+        $respond = curl_exec($ch);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        echo "Response: " . $respond . "<br>";
+        echo "Error: " . $error;
+        die();
     }
 
     public function respond()
