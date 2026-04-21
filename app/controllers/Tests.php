@@ -236,6 +236,7 @@ class Tests extends Controller
         $messaging = $this->model('Messaging');
 
         $data = [
+            'order_id'   => '12345', // مهم
             'identifier' => 'TEST-123',
             'project'    => 'مشروع تجريبي',
             'total'      => '100',
@@ -243,8 +244,11 @@ class Tests extends Controller
 
         $result = $messaging->ConfirmedOrdersApp('0597767751', 'Ahmed Test', (object)$data);
 
+        $response = json_decode($result, true);
+
         dd([
-            'result' => $result
+            'raw' => $result,
+            'decoded' => $response
         ]);
     }
     public function respond()
