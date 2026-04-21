@@ -102,7 +102,7 @@ class Tests extends Controller
 
         // echo $messaging->ReciveOrdersApp('0597767751', 'مشروع صدقة جارية', '1984', '100','namaa.sa');
 
-        // echo $messaging->ConfirmedOrdersApp('0597767751', 'مشروع صدقة جارية', '1984', '100');
+         echo $messaging->ConfirmedOrdersApp('0597767751', 'مشروع صدقة جارية', '1984', '100');
 
         $mobile = trim('0561611117');
 
