@@ -98,7 +98,7 @@ class Tests extends Controller
 
         $result = $messaging->sendConfirmation([
             'order_id' => 1,
-            'mailto' => 'a6e6s1@gmail.com',
+            'mailto' => 'islamosman2541998@gmail.com',
             'mobile' => '0561611117',
             'identifier' => '7002222222222222',
             'total' => '1000',
