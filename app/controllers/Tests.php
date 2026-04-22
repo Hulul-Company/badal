@@ -103,7 +103,7 @@ class Tests extends Controller
             'identifier' => '7002222222222222',
             'total' => '1000',
             'project' => 'مشروع صدقة جارية',
-            'donor' => 'Ahmed',
+            'donor' => 'islaaaam',
         ]);
 
         header('Content-Type: application/json');
