@@ -63,10 +63,7 @@ class Offers extends ApiController
             'notify_id'         => $order->donor_id,
             'notify'            => "تم إضافة عرض جديد على طلبكم",
         ];
-        echo '<pre>';
-        print_r($sendData);
-        echo '</pre>';
-        die;
+       
         $messaging->sendNotfication($sendData, 'newRequest');
 
         $this->response("Offer sent successfully");
