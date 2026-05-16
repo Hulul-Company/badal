@@ -155,7 +155,29 @@ class Offer extends Model
         $this->db->query($query);
         return $this->db->single();
     }
+public function getOrderByProjectID($project_id)
+{
+    $query = '
+        SELECT 
+            badal_orders.order_id,
+            badal_orders.badal_id,
+            badal_orders.behafeof,
+            orders.*,
+            donors.mobile,
+            donors.full_name,
+            donors.email
+        FROM badal_orders, orders, donors
+        WHERE badal_orders.project_id = :project_id
+        AND badal_orders.order_id = orders.order_id
+        AND orders.donor_id = donors.donor_id
+        ORDER BY badal_orders.create_date DESC
+        LIMIT 1
+    ';
 
+    $this->db->query($query);
+    $this->db->bind(':project_id', $project_id);
+    return $this->db->single();
+}
     /**
      * get All Donors 
      */

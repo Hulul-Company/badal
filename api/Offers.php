@@ -23,35 +23,49 @@ class Offers extends ApiController
         $data = $this->requiredArray(['substitute_id', 'project_id', 'amount', 'start_at']);
         // check if amount is possible
         $project = $this->model->getProject($data['project_id']);
-        if( $data['amount'] < $project->min_price ){
-            $this->error("الحد الادني : " . $project->min_price . ' ريال '); 
+        if ($data['amount'] < $project->min_price) {
+            $this->error("الحد الادني : " . $project->min_price . ' ريال ');
         }
         $data['offer_time'] = json_decode($this->model->getSettings('badal')->value)->offer_time;
         $checkexist = $this->model->checkPossibleTime($data);
-        if(count($checkexist)){
+        if (count($checkexist)) {
             $this->error("لا يمكن اضافه العرض في هذا الوقت ,  يجب ان يكون مضي " .  $data['offer_time'] .  " ساعات علي اخر العرض ");
         }
         $offer = $this->model->addOffer($data);
-        if(!$offer) $this->error("There is a problem .. Please try again"); 
+        if (!$offer) $this->error("There is a problem .. Please try again");
         // send messages  (email - sms - whatsapp)
-        // $offerData = $this->model->getOfferByIdWithRelationsNotiftAdd($offer); // get offer
-         
-        // $donors = $this->model->getAllDonors();   // get all donors to notify
-        // $messaging = $this->model('Messaging');
-        // foreach($donors as $donor){
-        //     $sendData = [
-        //         'mailto'            => $donor->email,
-        //         'mobile'            => $donor->mobile,
-        //         'total'             => $offerData->amount,
-        //         'donor'             => $donor->full_name,
-        //         'identifier'        => $offerData->project_name, //name of project 
-        //         'project'           => $offerData->project_name,
-        //         'substitute_name'   => $offerData->full_name,
-        //         'substitute_start'  => $offerData->start_at,
-           
-        //     ];
-        //     $messaging->sendNotfication($sendData, 'newOffer');
-        // }
+        $offerData = $this->model->getOfferByIdWithRelationsNotiftAdd($offer);
+
+        if (!$offerData) {
+            $this->error("Offer data not found");
+        }
+
+        $order = $this->model->getOrderByProjectID($data['project_id']);
+
+        if (!$order) {
+            $this->error("Order not found for this project");
+        }
+
+        $messaging = $this->model('Messaging');
+
+        $sendData = [
+            'mailto'            => $order->email,
+            'mobile'            => $order->mobile,
+
+            'identifier'        => $order->order_identifier,
+
+            'total'             => $offerData->amount,
+            'project'           => $offerData->project_name,
+            'donor'             => $order->behafeof,
+            'substitute_name'   => $offerData->full_name,
+            'substitute_start'  => $offerData->start_at,
+
+            'notify_id'         => $order->donor_id,
+            'notify'            => "تم إضافة عرض جديد على طلبكم",
+        ];
+
+        $messaging->sendNotfication($sendData, 'newRequest');
+
         $this->response("Offer sent successfully");
     }
 
@@ -67,16 +81,16 @@ class Offers extends ApiController
     {
         $offer_id = $this->required('offer_id');
         $offer = $this->model->getOfferById($offer_id); // get offer
-        if($offer == null)$this->error("Offer not found");
+        if ($offer == null) $this->error("Offer not found");
         // if($offer->status == 0)$this->error("Already canceled");
         $offer = $this->model->cancelOffer($offer_id);
-        if($offer == true) $this->response("Offer cancel successfully");
+        if ($offer == true) $this->response("Offer cancel successfully");
         else {
             $this->error("There is a problem .. Please try again");
         }
     }
 
-    
+
     /**
      * list offers by substitute
      *@param integar $substitute_id
