@@ -144,7 +144,7 @@ class Orders extends ApiController
                 $this->error('Upload failed: ' . implode(',', $image['error']));
             }
 
-            $image['filename'] = $image['filename']; 
+            $image['filename'] = $image['filename'];
         } else {
             $image['filename'] = false;
         }
@@ -180,7 +180,7 @@ class Orders extends ApiController
             'status' =>  $status,
             'app' => 'kafara'
         ];
-        
+
 
         //loop through donations
         foreach ($donations as $key => $donation) {
@@ -265,7 +265,7 @@ class Orders extends ApiController
         $this->projectModel->updateOrderMeta($orderdata);
 
         if ($orderdata['app'] === 'badal') {
-            $substitutes = $this->model('Substitute')->getActiveSubstitutes(); 
+            $substitutes = $this->model('Substitute')->getActiveSubstitutes();
 
             if (!empty($substitutes)) {
                 $messaging = $this->model('Messaging');
@@ -274,8 +274,8 @@ class Orders extends ApiController
                     if ($substitute->donor_id && $substitute->fcm_token) {
                         $sendData = [
                             'notify_id' => $substitute->donor_id,
-                            'notify'    => "طلب بدل جديد متاح!", 
-                            'type'      => 'newOrder', 
+                            'notify'    => "طلب بدل جديد متاح!",
+                            'type'      => 'newOrder',
                             'mailto'    => $substitute->email ?? '',
                             'mobile'    => $substitute->phone ?? '',
                             'donor'     => $substitute->full_name ?? 'بديل',
@@ -289,7 +289,7 @@ class Orders extends ApiController
                 }
             }
         }
-                //prepare notification data
+        //prepare notification data
         $messaging = $this->model('Messaging');
         $sendData = [
             'mailto' => $donor->email,
@@ -300,7 +300,7 @@ class Orders extends ApiController
             'project' => $orderdata['projects'],
             'donor' => $orderdata['donor_name'],
             'subject' => 'تم تسجيل طلب جديد ',
-            'msg' => "تم تسجيل طلب جديد بمشروع : {$orderdata['projects']} <br/> بقيمة : " . $orderdata['total'],
+            'msg' => "تم تسجيل طلب جديد بمشروع : {$orderdata['projects']}  بقيمة : " . $orderdata['total'],
 
         ];
         //send Email and SMS confirmation
@@ -344,7 +344,7 @@ class Orders extends ApiController
             'data' => $responseData
         ]);
     }
-   
+
 
     public function test()
     {
@@ -680,7 +680,7 @@ class Orders extends ApiController
             'type'             => 'start_order',
         ];
 
-        $sendData['notify'] = "تم بدء تنفيذ طلبك";  
+        $sendData['notify'] = "تم بدء تنفيذ طلبك";
 
         $sendData['body'] = "بدأ البديل {$donor->substitute_name} تنفيذ طلبك نيابة عن {$donor->behafeof} في مشروع {$donor->projects}";
 
@@ -948,6 +948,46 @@ class Orders extends ApiController
                 $updatedBadal = $this->model->updateBadalOrdersStatusByOrderId($order->order_id, 1);
                 if (!$updatedBadal) {
                     error_log("Warning: Failed to update badal_orders for order_id: {$order->order_id}");
+                }
+            }
+
+            $updatedDonations = $this->projectModel->updateDonationStatus($order->order_id, 1);
+            if (!$updatedDonations) {
+                error_log("Warning: Failed to update donations for order_id: {$order->order_id}");
+            }
+        }
+        if ($newStatus == 1) {
+            $hasBadalOrders = $this->model->orderHasBadalOrders($order->order_id);
+
+            if ($hasBadalOrders) {
+                $updatedBadal = $this->model->updateBadalOrdersStatusByOrderId($order->order_id, 1);
+                if (!$updatedBadal) {
+                    error_log("Warning: Failed to update badal_orders for order_id: {$order->order_id}");
+                }
+
+                // send notification to all active substitutes
+                $substitutes = $this->model('Substitute')->getActiveSubstitutes();
+
+                if (!empty($substitutes)) {
+                    $messaging = $this->model('Messaging');
+
+                    foreach ($substitutes as $substitute) {
+                        if ($substitute->donor_id && $substitute->fcm_token) {
+                            $substituteData = [
+                                'notify_id'  => $substitute->donor_id,
+                                'notify'     => "طلب بدل جديد متاح!",
+                                'type'       => 'newOrder',
+                                'mailto'     => $substitute->email ?? '',
+                                'mobile'     => $substitute->phone ?? '',
+                                'donor'      => $substitute->full_name ?? 'بديل',
+                                'project'    => $updatedOrder->projects ?? $order->projects,
+                                'total'      => $updatedOrder->total ?? $order->total,
+                                'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
+                            ];
+
+                            $messaging->sendNotfication($substituteData, 'newOrder');
+                        }
+                    }
                 }
             }
 
