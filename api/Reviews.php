@@ -43,7 +43,7 @@ class Reviews extends ApiController
         if($review == true){
             $substitute =  $this->model->getSubstitute($data['badal_id']);
             $notifyData =  $this->model->getSubstituteNew($data['badal_id']);
-            dd( $notifyData);
+            
             // send messages  (email - sms - whatsapp)
             $messaging = $this->model('Messaging');
             $sendData = [

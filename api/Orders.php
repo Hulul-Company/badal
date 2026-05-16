@@ -649,7 +649,7 @@ class Orders extends ApiController
         $currentDate = date('d-m-Y');
 
         if ($requestStartDate > $currentDate) {
-            $this->error('يجب بداء الطلب في الموعد المحدد');
+            $this->error('يجب بدأ الطلب في الموعد المحدد');
         }
         require_once "../api/Rituals.php";
         $ritualClass = new Rituals;
