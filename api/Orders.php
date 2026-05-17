@@ -304,16 +304,16 @@ class Orders extends ApiController
 
         ];
         //send Email and SMS confirmation
-        // $messaging->donationAdminNotify($sendData);
+        $messaging->donationAdminNotify($sendData);
         // send message to donor 
-        // $messaging->donationDonorNotify($sendData);
+        $messaging->donationDonorNotify($sendData);
         // send whatsapp message to donor 
-        // $messaging->ReciveOrdersApp("$sendData[mobile]", "$sendData[donor]", " $sendData[identifier]", "$_POST[total]", 'namaa.sa');
+        $messaging->ReciveOrdersApp("$sendData[mobile]", "$sendData[donor]", " $sendData[identifier]", "$_POST[total]", 'namaa.sa');
         // send sms if payment = 14 (payfort)
         if (@$payfortResponse->status == 14) {
             $order = $this->projectModel->getSingle('*', ['order_id' => $orderdata['order_id']], 'orders');
             if (!$order->notified) {
-                // $messaging->sendConfirmation($sendData);
+                $messaging->sendConfirmation($sendData);
                 $this->projectModel->notified($orderdata['order_id']);
 
                 // queue the subsitudes in queue table
@@ -1051,15 +1051,15 @@ class Orders extends ApiController
             'msg'        => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
         ];
 
-        $messaging->donationAdminNotify($sendData);
-        $messaging->donationDonorNotify($sendData);
-        $messaging->ReciveOrdersApp(
-            $sendData['mobile'],
-            $sendData['donor'],
-            $sendData['identifier'],
-            $order->total,
-            'namaa.sa'
-        );
+        // $messaging->donationAdminNotify($sendData);
+        // $messaging->donationDonorNotify($sendData);
+        // $messaging->ReciveOrdersApp(
+        //     $sendData['mobile'],
+        //     $sendData['donor'],
+        //     $sendData['identifier'],
+        //     $order->total,
+        //     'namaa.sa'
+        // );
 
         /**
          * Send confirmation once only if payment succeeded
@@ -1072,7 +1072,7 @@ class Orders extends ApiController
             $orderCheck = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
 
             if ($orderCheck && !$orderCheck->notified) {
-                $messaging->sendConfirmation($sendData);
+                // $messaging->sendConfirmation($sendData);
                 $this->projectModel->notified($order->order_id);
 
                 require_once APPROOT . '/admin/models/QueueTable.php';
