@@ -155,9 +155,9 @@ class Offer extends Model
         $this->db->query($query);
         return $this->db->single();
     }
-public function getOrderByProjectID($project_id)
-{
-    $query = '
+    public function getOrderByProjectID($project_id)
+    {
+        $query = '
         SELECT 
             badal_orders.order_id,
             badal_orders.badal_id,
@@ -174,10 +174,43 @@ public function getOrderByProjectID($project_id)
         LIMIT 1
     ';
 
-    $this->db->query($query);
-    $this->db->bind(':project_id', $project_id);
-    return $this->db->single();
-}
+        $this->db->query($query);
+        $this->db->bind(':project_id', $project_id);
+        return $this->db->single();
+    }
+
+    public function getOrderByProjectIDWithToken($project_id)
+    {
+        $query = "
+        SELECT 
+            badal_orders.order_id,
+            badal_orders.badal_id,
+            badal_orders.behafeof,
+            orders.*,
+            donors.donor_id,
+            donors.mobile,
+            donors.full_name,
+            donors.email,
+            fcm_tokens.fcm_token
+        FROM badal_orders
+        INNER JOIN orders 
+            ON badal_orders.order_id = orders.order_id
+        INNER JOIN donors 
+            ON orders.donor_id = donors.donor_id
+        INNER JOIN fcm_tokens 
+            ON fcm_tokens.donor_id = donors.donor_id
+            AND fcm_tokens.fcm_token IS NOT NULL
+        WHERE badal_orders.project_id = :project_id
+        AND donors.status <> 2
+        ORDER BY fcm_tokens.modified_date DESC
+        LIMIT 1
+    ";
+
+        $this->db->query($query);
+        $this->db->bind(':project_id', $project_id);
+
+        return $this->db->single();
+    }
     /**
      * get All Donors 
      */
