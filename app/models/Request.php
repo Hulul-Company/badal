@@ -265,7 +265,32 @@ class Request extends Model
         $results = $this->db->resultSet();
         return $results;
     }
+    public function getSubstituteByIDWithToken($id)
+    {
+        $query = "
+        SELECT 
+            substitutes.*,
+            donors.donor_id AS subsitude_donor_id,
+            donors.email AS donor_email,
+            donors.mobile AS donor_mobile,
+            donors.full_name AS donor_full_name,
+            fcm_tokens.fcm_token
+        FROM substitutes
+        INNER JOIN donors 
+            ON donors.mobile = substitutes.phone
+            AND donors.status = 1
+        INNER JOIN fcm_tokens 
+            ON fcm_tokens.donor_id = donors.donor_id
+            AND fcm_tokens.fcm_token IS NOT NULL
+        WHERE substitutes.substitute_id = :substitute_id
+        LIMIT 1
+    ";
 
+        $this->db->query($query);
+        $this->db->bind(':substitute_id', $id);
+
+        return $this->db->single();
+    }
     /**
      * get all Substitutes with donor
      *

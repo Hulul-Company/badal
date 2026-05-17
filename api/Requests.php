@@ -58,59 +58,72 @@ class Requests extends ApiController
     }
 
     /**
-     * add new request
-     *@param integar $badal_id
-     *@param integar $substitute_id
-     *@param integar $start_at
+     * select request
+     *@param integer $request_id
      * @return response
      */
-    public function add()
+    public function select()
     {
-        $data = $this->requiredArray(['badal_id', 'substitute_id', 'start_at']);
-        $order = $this->model->getOrderByBadalID($data['badal_id']); // get orderb badal id
+        $request_id = $this->required('request_id');
+
+        // get request
+        $request = $this->model->getRequestById($request_id);
+
+        if ($request == null) {
+            $this->error("request not found");
+        }
+
+        // select request
+        $updateRequest = $this->model->selectRequest($request_id);
+
+        // update BadalOrder Substitute_id
+        $updateRequest = $this->model->updateBadalOrder($request);
+
+        if (!$updateRequest) {
+            $this->error("There is a problem .. Please try again");
+        }
+
+        // delete all request with same day
+        $deleteRequest = $this->model->deleteSameDateRequest($request);
+
+        // get order by badal id
+        $order = $this->model->getOrderByBadalID($request->badal_id);
+
         if (!$order) {
             $this->error("Order not found");
         }
 
-        $validDateRequest = $this->model->checkValidDateRequest($data['badal_id']); //get start day and last day
+        // get substitute with donor_id + fcm_token
+        $substitute = $this->model->getSubstituteByIDWithToken($request->substitute_id);
 
+        if (!$substitute) {
+            $this->error("Substitute donor token not found");
+        }
 
-        if ((strtotime($data['start_at']) < $validDateRequest->start_date) || (strtotime($data['start_at']) > $validDateRequest->end_date)) {
-            $this->error(" يجب تقديم الطلب في الموعد من " . date("Y-m-d", $validDateRequest->start_date) . " الي " . date("Y-m-d", $validDateRequest->end_date));
-        }
-        $lastrequests = $this->model->getLastsRequestOfSubstitute($data['badal_id'], $data['substitute_id']); // get the last request of subsitute
-        if (count($lastrequests) > 0) {
-            $this->error("لقد قمت بالتسجيل من قبل");
-        }
-        $checkSameDate = $this->model->checkAcceptSameDate($data); // get the last request of subsitute
-        if (count($checkSameDate) > 0) {
-            $this->error("يوجد لديك عمره ف هذا اليوم");
-        }
-        $request = $this->model->addBadalRequest($data); // add request 
-        $substitute = $this->model->getrequestByIdWithSubstitute($request); //get Selected substitute
-        if ($substitute->status != 1) {
-            $this->error("الحساب متوقف عن الخدمة");
-        }
-        // send messages  (email - sms - whatsapp)
+        $sendData = [
+            'mailto'            => $substitute->email ?? $substitute->donor_email ?? '',
+            'mobile'            => $substitute->phone ?? $substitute->donor_mobile ?? '',
+            'identifier'        => $order->order_identifier,
+            'total'             => $order->total,
+            'project'           => $order->projects,
+            'donor'             => $order->donor_name,
+            'substitute_name'   => $substitute->full_name,
+            'behafeof'          => $order->behafeof,
+
+            'notify_id'         => $substitute->subsitude_donor_id,
+            'notify'            => "لقد تم اختيارك",
+            'type'              => 'newOrder',
+
+            'body'              => "تم اختيارك لتنفيذ طلب بدل في مشروع {$order->projects} نيابة عن {$order->behafeof}",
+            'msg'               => "تم اختيارك لتنفيذ طلب بدل في مشروع {$order->projects} نيابة عن {$order->behafeof}",
+        ];
+
+        $this->messaging->sendNotfication($sendData, 'newOrder');
+
+        $this->updateQueueNotify($order);
+
         if ($request == true) {
-            $sendData = [
-                'mailto'                => $order->email,
-                'mobile'                => $order->mobile,
-                'identifier'            => $order->order_identifier,
-                'total'                 => $order->total,
-                'project'               => $order->projects,
-                'donor'                 => $order->behafeof,
-                'substitute_name'       => $substitute->full_name,
-                'substitute_start'      => $substitute->start_at,
-                'notify_id'             => $order->donor_id,
-                'notify'                => "يرغب في تنفيذ طلبكم",
-                'type'                  => 'newRequest',
-            ];
-
-            $this->messaging->sendNotfication($sendData, 'newRequest');
-
-
-            $this->response("Request added successfully");
+            $this->response($request, 200, 'selected Sucessfully');
         } else {
             $this->error("There is a problem .. Please try again");
         }
