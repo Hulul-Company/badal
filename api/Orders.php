@@ -629,19 +629,20 @@ class Orders extends ApiController
     }
 
     /**
-     * start new Rituals  
+     * start new Rituals
      *
-     * @param  mixed $projectId
-     * @param  mixed $substituteId
-     * @return object
+     * @return response
      */
     public function start()
     {
         $data = $this->requiredArray(['project_id', 'substitute_id', 'order_id']);
+
         $Badalorders = $this->BadalOrder->getBadalOrderByOrderID($data['order_id']);
+
         if (!$Badalorders) {
             $this->error('Order Not Found');
         }
+
         // check the start date
         $requestBadal = $this->BadalOrder->getRequestByBadalOrderID($Badalorders->badal_id);
 
@@ -651,44 +652,61 @@ class Orders extends ApiController
         if ($requestStartDate > $currentDate) {
             $this->error('يجب بداء الطلب في الموعد المحدد');
         }
+
         require_once "../api/Rituals.php";
+
         $ritualClass = new Rituals;
+
         if ($Badalorders->start_at != null) {
             $rites = $this->ritual->getRitualsByOrder($data['order_id']);
             $this->response($rites, 200, 'Already Started');
         }
+
         $data = $ritualClass->start();
-        // get badal order and change status 
-        if (!empty($data['rituals'])) $Badalorders = $this->BadalOrder->updateBadalOrderStart($Badalorders->badal_id);
 
-        if (!$Badalorders) $this->error('Not Found');
+        // get badal order and change status
+        if (!empty($data['rituals'])) {
+            $Badalorders = $this->BadalOrder->updateBadalOrderStart($Badalorders->badal_id);
+        }
 
-        // send messages  (email - sms - whatsapp)
+        if (!$Badalorders) {
+            $this->error('Not Found');
+        }
+
+        // get donor with fcm token
+        $donor = $this->BadalOrder->getDonorByOrderIDWithToken($data['order_id']);
+
+        if (!$donor) {
+            $this->error("Donor token not found");
+        }
+
         $messaging = $this->model('Messaging');
-        $donor = $this->BadalOrder->getDonorByOrderID($data['order_id']);
+
+        $body = "بدأ البديل {$donor->substitute_name} تنفيذ طلبك نيابة عن {$donor->behafeof} في مشروع {$donor->projects}";
 
         $sendData = [
-            'mailto'           => $donor->email,
-            'mobile'           => $donor->mobile,
+            'mailto'           => $donor->email ?? '',
+            'mobile'           => $donor->mobile ?? '',
             'identifier'       => $donor->order_identifier,
+            'order_id'         => $donor->order_id,
             'total'            => $donor->total,
             'project'          => $donor->projects,
             'donor'            => $donor->donor_name,
             'behafeof'         => $donor->behafeof,
             'substitute_name'  => $donor->substitute_name,
+
             'notify_id'        => $donor->donor_id,
-            'type'             => 'start_order',
+            'notify'           => "تم بدء تنفيذ طلبك",
+            'type'             => 'newOrder',
+
+            'body'             => $body,
+            'msg'              => $body,
         ];
 
-        $sendData['notify'] = "تم بدء تنفيذ طلبك";  
-
-        $sendData['body'] = "بدأ البديل {$donor->substitute_name} تنفيذ طلبك نيابة عن {$donor->behafeof} في مشروع {$donor->projects}";
-
-        $messaging->sendNotfication($sendData, 'start_order');
+        $messaging->sendNotfication($sendData, 'newOrder');
 
         $this->response($data['rituals']);
     }
-
     /**
      * Form badal  
      *

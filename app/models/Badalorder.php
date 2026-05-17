@@ -545,7 +545,55 @@ class Badalorder extends Model
        
         return $this->db->single();
     }
+    public function getDonorByOrderIDWithToken($order_id)
+    {
+        $query = "
+        SELECT 
+            orders.order_id,
+            orders.order_identifier,
+            orders.total,
+            orders.projects,
+            orders.donor_name,
 
+            badal_orders.badal_id,
+            badal_orders.behafeof,
+
+            donors.donor_id,
+            donors.email,
+            donors.mobile,
+            donors.full_name,
+
+            substitutes.full_name AS substitute_name,
+
+            fcm_tokens.fcm_token
+
+        FROM orders
+
+        INNER JOIN donors 
+            ON orders.donor_id = donors.donor_id
+
+        INNER JOIN badal_orders 
+            ON badal_orders.order_id = orders.order_id
+
+        LEFT JOIN substitutes 
+            ON badal_orders.substitute_id = substitutes.substitute_id
+
+        INNER JOIN fcm_tokens 
+            ON fcm_tokens.donor_id = donors.donor_id
+            AND fcm_tokens.fcm_token IS NOT NULL
+
+        WHERE orders.order_id = :order_id
+        AND donors.status <> 2
+
+        ORDER BY fcm_tokens.modified_date DESC
+        LIMIT 1
+    ";
+
+        $this->db->query($query);
+        $this->db->bind(':order_id', $order_id);
+
+        return $this->db->single();
+    }
     /**
      * get all uncompleted rituals by order_id
      * @param integer $id
