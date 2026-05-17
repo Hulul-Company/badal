@@ -172,13 +172,13 @@ class Requests extends ApiController
 
             'notify_id'         => $substitute->subsitude_donor_id,
             'notify'            => "لقد تم اختيارك",
-            'type'              => 'newOrder',
+            'type'              => 'selectRequest',
 
             'body'              => "تم اختيارك لتنفيذ طلب بدل في مشروع {$order->projects} نيابة عن {$order->behafeof}",
             'msg'               => "تم اختيارك لتنفيذ طلب بدل في مشروع {$order->projects} نيابة عن {$order->behafeof}",
         ];
 
-        $this->messaging->sendNotfication($sendData, 'newOrder');
+        $this->messaging->sendNotfication($sendData, 'selectRequest');
 
         $this->updateQueueNotify($order);
 
@@ -188,6 +188,8 @@ class Requests extends ApiController
             $this->error("There is a problem .. Please try again");
         }
     }
+
+
     /**
      * cancel request
      *@param integar $request_id

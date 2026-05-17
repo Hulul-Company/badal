@@ -30,22 +30,64 @@ class Review extends Model
             return false;
         }
     }
+    public function getSubstituteNewWithToken($badal_id)
+    {
+        $query = "
+        SELECT 
+            donors.donor_id,
+            donors.full_name,
+            donors.email,
+            donors.mobile,
+            fcm_tokens.fcm_token
+        FROM badal_orders
+        INNER JOIN substitutes 
+            ON badal_orders.substitute_id = substitutes.substitute_id
+        INNER JOIN donors 
+            ON donors.mobile = substitutes.phone
+            AND donors.status = 1
+        INNER JOIN fcm_tokens 
+            ON fcm_tokens.donor_id = donors.donor_id
+            AND fcm_tokens.fcm_token IS NOT NULL
+        WHERE badal_orders.badal_id = :badal_id
+        ORDER BY fcm_tokens.modified_date DESC
+        LIMIT 1
+    ";
 
+        $this->db->query($query);
+        $this->db->bind(':badal_id', $badal_id);
+
+        return $this->db->single();
+    }
 
     /**
      * insert new review
      * @param array $data
      * @return boolean
      */
-    public function getSubstitute($badal_id){
-        $this->db->query('SELECT
-        `badal_orders`.substitute_id , `substitutes`.*, `orders`.donor_id,
-        `orders`.order_id,`orders`.order_identifier,`orders`.total,`orders`.projects,`orders`.donor_name
-        FROM  `badal_orders`, `orders`, `substitutes` 
-        WHERE `badal_orders`.badal_id = ' . $badal_id.'
-        AND `orders`.order_id = `badal_orders`.order_id'
-        );
-       return $this->db->single();
+    public function getSubstitute($badal_id)
+    {
+        $this->db->query('
+        SELECT
+            badal_orders.substitute_id,
+            substitutes.*,
+            orders.donor_id,
+            orders.order_id,
+            orders.order_identifier,
+            orders.total,
+            orders.projects,
+            orders.donor_name
+        FROM badal_orders
+        INNER JOIN orders 
+            ON orders.order_id = badal_orders.order_id
+        INNER JOIN substitutes 
+            ON substitutes.substitute_id = badal_orders.substitute_id
+        WHERE badal_orders.badal_id = :badal_id
+        LIMIT 1
+    ');
+
+        $this->db->bind(':badal_id', $badal_id);
+
+        return $this->db->single();
     }
 
     /**

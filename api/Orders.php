@@ -697,13 +697,13 @@ class Orders extends ApiController
 
             'notify_id'        => $donor->donor_id,
             'notify'           => "تم بدء تنفيذ طلبك",
-            'type'             => 'newOrder',
+            'type'             => 'start_order',
 
             'body'             => $body,
             'msg'              => $body,
         ];
 
-        $messaging->sendNotfication($sendData, 'newOrder');
+        $messaging->sendNotfication($sendData, 'start_order');
 
         $this->response($data['rituals']);
     }

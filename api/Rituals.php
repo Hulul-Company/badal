@@ -64,7 +64,6 @@ class Rituals extends ApiController
         foreach ($data['rites'] as $rite) {
             $rituals[] = $this->model->storeRituals($rite, $data);
         }
-        // $this->response("تم بداء المناسك");
         $rituals = $this->model->getRitualsByOrder($data['order_id']);
         // $this->response($rituals);
         $data['rituals'] =  $rituals;
