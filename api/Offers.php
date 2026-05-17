@@ -52,6 +52,7 @@ class Offers extends ApiController
             'mailto'            => $order->email,
             'mobile'            => $order->mobile,
 
+            // لازم يكون order_identifier
             'identifier'        => $order->order_identifier,
 
             'total'             => $offerData->amount,
@@ -60,10 +61,17 @@ class Offers extends ApiController
             'substitute_name'   => $offerData->full_name,
             'substitute_start'  => $offerData->start_at,
 
+            // App notification
             'notify_id'         => $order->donor_id,
             'notify'            => "تم إضافة عرض جديد على طلبكم",
+
+            // Push notification body
+            'body'              => "لديك عرض جديد من {$offerData->full_name} على طلب {$offerData->project_name} بقيمة {$offerData->amount}",
+
+            // خليه موجود زي add request
+            'type'              => 'newRequest',
         ];
-       
+
         $messaging->sendNotfication($sendData, 'newRequest');
 
         $this->response("Offer sent successfully");
