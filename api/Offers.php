@@ -21,54 +21,75 @@ class Offers extends ApiController
     public function add()
     {
         $data = $this->requiredArray(['substitute_id', 'project_id', 'amount', 'start_at']);
-        // check if amount is possible
+
+        // check if project exists
         $project = $this->model->getProject($data['project_id']);
+
+        if (!$project) {
+            $this->error("Project not found");
+        }
+
+        // check if amount is possible
         if ($data['amount'] < $project->min_price) {
             $this->error("الحد الادني : " . $project->min_price . ' ريال ');
         }
+
         $data['offer_time'] = json_decode($this->model->getSettings('badal')->value)->offer_time;
+
         $checkexist = $this->model->checkPossibleTime($data);
+
         if (count($checkexist)) {
             $this->error("لا يمكن اضافه العرض في هذا الوقت ,  يجب ان يكون مضي " .  $data['offer_time'] .  " ساعات علي اخر العرض ");
         }
+
         $offer = $this->model->addOffer($data);
-        if (!$offer) $this->error("There is a problem .. Please try again");
-        // send messages  (email - sms - whatsapp)
+
+        if (!$offer) {
+            $this->error("There is a problem .. Please try again");
+        }
+
+        // get offer data
         $offerData = $this->model->getOfferByIdWithRelationsNotiftAdd($offer);
 
         if (!$offerData) {
             $this->error("Offer data not found");
         }
 
-        $order = $this->model->getOrderByProjectID($data['project_id']);
+        // get order donor with fcm token
+        $order = $this->model->getOrderByProjectIDWithToken($data['project_id']);
 
         if (!$order) {
-            $this->error("Order not found for this project");
+            $this->error("Order donor token not found");
         }
 
         $messaging = $this->model('Messaging');
 
-        $sendData = [
-            'mailto'            => $order->email,
-            'mobile'            => $order->mobile,
+        $body = "لديك عرض جديد من {$offerData->full_name} على طلب {$offerData->project_name} بقيمة {$offerData->amount}";
 
+        $sendData = [
+            'mailto'            => $order->email ?? '',
+            'mobile'            => $order->mobile ?? '',
+
+            // لازم يكون order_identifier
             'identifier'        => $order->order_identifier,
 
             'total'             => $offerData->amount,
             'project'           => $offerData->project_name,
-            'donor'             => $order->behafeof,
+            'donor'             => $order->behafeof ?? $order->donor_name,
             'substitute_name'   => $offerData->full_name,
             'substitute_start'  => $offerData->start_at,
 
+            // App + Push
             'notify_id'         => $order->donor_id,
             'notify'            => "تم إضافة عرض جديد على طلبكم",
-            'type'              => 'newOrder',
+            'type'              => 'newOffer',
 
-            'body'              => "لديك عرض جديد من {$offerData->full_name} على طلب {$offerData->project_name} بقيمة {$offerData->amount}",
-            'msg'               => "لديك عرض جديد من {$offerData->full_name} على طلب {$offerData->project_name} بقيمة {$offerData->amount}",
+            // Push body
+            'body'              => $body,
+            'msg'               => $body,
         ];
 
-        $messaging->sendNotfication($sendData, 'newOrder');
+        $messaging->sendNotfication($sendData, 'newOffer');
 
         $this->response("Offer sent successfully");
     }
