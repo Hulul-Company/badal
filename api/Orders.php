@@ -883,45 +883,76 @@ class Orders extends ApiController
         $payfortResponse = null;
         $newPaymentMethodId = null;
         $newPaymentMethodKey = null;
+        $hasBadalOrders = false;
 
+        /**
+         * Check new payment method
+         */
         if (!empty($_POST['payment_method_id'])) {
-            $newPayment = $this->projectModel->getPaymentKey($_POST['payment_method_id'])[0];
-            //                                                      ^^^^^^^^^^^^^^^^^^^^^^^
-            if (!$newPayment) {
+            $paymentMethods = $this->projectModel->getPaymentKey($_POST['payment_method_id']);
+
+            if (empty($paymentMethods) || empty($paymentMethods[0])) {
                 $this->error('Invalid payment method');
             }
+
+            $newPayment = $paymentMethods[0];
             $newPaymentMethodId = $newPayment->payment_id;
             $newPaymentMethodKey = $newPayment->payment_key;
         }
 
+        /**
+         * Decode payfort response
+         */
         if (!empty($_POST['payfortResponse'])) {
             $payfortResponse = json_decode($_POST['payfortResponse'], true);
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->error('Invalid payfortResponse JSON');
             }
         }
 
-        if ($order->payment_method_id == 1 || ($newPaymentMethodId == 1)) {
+        /**
+         * Upload bank transfer image if payment method is bank transfer
+         */
+        if ($order->payment_method_id == 1 || $newPaymentMethodId == 1) {
             if (!isset($_FILES['bankImage']) || $_FILES['bankImage']['error'] !== UPLOAD_ERR_OK) {
                 $this->error('Please upload a bank transfer proof image');
             }
 
-            $uploadResult = uploadImage('bankImage', APPROOT . '/media/files/banktransfer/', 5000000, false);
+            $uploadResult = uploadImage(
+                'bankImage',
+                APPROOT . '/media/files/banktransfer/',
+                5000000,
+                false
+            );
+
             if (!empty($uploadResult['error'])) {
                 $this->error('Image upload failed: ' . implode(', ', $uploadResult['error']));
             }
+
             $imageFilename = $uploadResult['filename'];
         }
 
+        /**
+         * Set new order status
+         */
         $newStatus = $order->status;
-        if ($payfortResponse && isset($payfortResponse['status']) && $payfortResponse['status'] == 14) {
+
+        if (
+            $payfortResponse &&
+            isset($payfortResponse['status']) &&
+            $payfortResponse['status'] == 14
+        ) {
             $newStatus = 1;
         }
 
+        /**
+         * Prepare update fields
+         */
         $updateFields = [
-            'status'         => $newStatus,
-            'meta'           => $payfortResponse ? json_encode($payfortResponse) : $order->meta,
-            'modified_date'  => time(),
+            'status'        => $newStatus,
+            'meta'          => $payfortResponse ? json_encode($payfortResponse) : $order->meta,
+            'modified_date' => time(),
         ];
 
         if ($newPaymentMethodId) {
@@ -933,99 +964,119 @@ class Orders extends ApiController
             $updateFields['banktransferproof'] = $imageFilename;
         }
 
+        /**
+         * Update order
+         */
         if (!$this->projectModel->updateOrderMetaAuthorization($updateFields + ['order_id' => $order->order_id])) {
             $this->error('Failed to update order');
         }
+
+        /**
+         * Reload updated order
+         */
         $updatedOrder = $this->projectModel->getOrderById($order->order_id);
+
         if (!$updatedOrder) {
             $this->error('Failed to reload updated order');
         }
 
+        /**
+         * If order is paid, update related badal_orders and donations once only
+         */
         if ($newStatus == 1) {
             $hasBadalOrders = $this->model->orderHasBadalOrders($order->order_id);
 
             if ($hasBadalOrders) {
                 $updatedBadal = $this->model->updateBadalOrdersStatusByOrderId($order->order_id, 1);
+
                 if (!$updatedBadal) {
                     error_log("Warning: Failed to update badal_orders for order_id: {$order->order_id}");
+                }
+
+              
+                $substitutes = $this->model('Substitute')->getActiveSubstitutes();
+
+                if (!empty($substitutes)) {
+                    $messaging = $this->model('Messaging');
+
+                    foreach ($substitutes as $substitute) {
+                        if (!empty($substitute->donor_id) && !empty($substitute->fcm_token)) {
+                            $substituteData = [
+                                'notify_id'  => $substitute->donor_id,
+                                'notify'     => "طلب بدل جديد متاح!",
+                                'mailto'     => $substitute->email ?? '',
+                                'mobile'     => $substitute->phone ?? '',
+                                'donor'      => $substitute->full_name ?? 'بديل',
+                                'project'    => $updatedOrder->projects ?? $order->projects,
+                                'total'      => $updatedOrder->total ?? $order->total,
+                                'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
+                            ];
+
+                            $messaging->sendNotfication($substituteData, 'newOrder');
+                        }
+                    }
                 }
             }
 
             $updatedDonations = $this->projectModel->updateDonationStatus($order->order_id, 1);
+
             if (!$updatedDonations) {
                 error_log("Warning: Failed to update donations for order_id: {$order->order_id}");
             }
         }
-        if ($newStatus == 1) {
-    $hasBadalOrders = $this->model->orderHasBadalOrders($order->order_id);
 
-    if ($hasBadalOrders) {
-        $updatedBadal = $this->model->updateBadalOrdersStatusByOrderId($order->order_id, 1);
-        if (!$updatedBadal) {
-            error_log("Warning: Failed to update badal_orders for order_id: {$order->order_id}");
-        }
-
-        // send notification to all active substitutes
-        $substitutes = $this->model('Substitute')->getActiveSubstitutes();
-
-        if (!empty($substitutes)) {
-            $messaging = $this->model('Messaging');
-
-            foreach ($substitutes as $substitute) {
-                if ($substitute->donor_id && $substitute->fcm_token) {
-                    $substituteData = [
-                        'notify_id'  => $substitute->donor_id,
-                        'notify'     => "طلب بدل جديد متاح!",
-                        'type'       => 'newOrder',
-                        'mailto'     => $substitute->email ?? '',
-                        'mobile'     => $substitute->phone ?? '',
-                        'donor'      => $substitute->full_name ?? 'بديل',
-                        'project'    => $updatedOrder->projects ?? $order->projects,
-                        'total'      => $updatedOrder->total ?? $order->total,
-                        'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
-                    ];
-
-                    $messaging->sendNotfication($substituteData, 'newOrder');
-                }
-            }
-        }
-    }
-
-    $updatedDonations = $this->projectModel->updateDonationStatus($order->order_id, 1);
-    if (!$updatedDonations) {
-        error_log("Warning: Failed to update donations for order_id: {$order->order_id}");
-    }
-}
-
+        /**
+         * Get donor
+         */
         $donor = $this->donorModel->getDonorId($order->donor_id);
+
         if (!$donor) {
             $this->error('Donor not found');
         }
 
+        /**
+         * Send donor/admin notifications
+         */
         $messaging = $this->model('Messaging');
+
         $sendData = [
-            'mailto'         => $donor->email,
-            'mobile'         => $donor->mobile,
-            'identifier'     => $order->order_identifier,
-            'order_id'       => $order->order_id,
-            'total'          => $order->total,
-            'project'        => $order->projects,
-            'donor'          => $order->donor_name,
-            'subject'        => 'تم تسجيل طلب جديد',
-            'msg'            => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
+            'mailto'     => $donor->email,
+            'mobile'     => $donor->mobile,
+            'identifier' => $order->order_identifier,
+            'order_id'   => $order->order_id,
+            'total'      => $order->total,
+            'project'    => $order->projects,
+            'donor'      => $order->donor_name,
+            'subject'    => 'تم تسجيل طلب جديد',
+            'msg'        => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
         ];
 
         $messaging->donationAdminNotify($sendData);
         $messaging->donationDonorNotify($sendData);
-        $messaging->ReciveOrdersApp($sendData['mobile'], $sendData['donor'], $sendData['identifier'], $order->total, 'namaa.sa');
+        $messaging->ReciveOrdersApp(
+            $sendData['mobile'],
+            $sendData['donor'],
+            $sendData['identifier'],
+            $order->total,
+            'namaa.sa'
+        );
 
-        if ($payfortResponse && @$payfortResponse->status == 14) {
+        /**
+         * Send confirmation once only if payment succeeded
+         */
+        if (
+            $payfortResponse &&
+            isset($payfortResponse['status']) &&
+            $payfortResponse['status'] == 14
+        ) {
             $orderCheck = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
-            if (!$orderCheck->notified) {
+
+            if ($orderCheck && !$orderCheck->notified) {
                 $messaging->sendConfirmation($sendData);
                 $this->projectModel->notified($order->order_id);
 
                 require_once APPROOT . '/admin/models/QueueTable.php';
+
                 $queueTable = new QueueTable();
                 $substitutes = $queueTable->getAvailableSubsitudes();
 
@@ -1033,19 +1084,22 @@ class Orders extends ApiController
                     foreach ($substitutes as $substitute) {
                         $queueTable->addqueue([
                             'order_id'      => $order->order_id,
-                            'substitute_id' => $substitute->substitute_id
+                            'substitute_id' => $substitute->substitute_id,
                         ]);
                     }
                 }
             }
         }
 
+        /**
+         * Response
+         */
         $response = [
-            'status'          => 'success',
-            'message'         => 'Order payment updated successfully',
-            'order'           => $updatedOrder,
-            'badal_updated'   => $hasBadalOrders ?? false,
-            'order_status'    => $newStatus == 1 ? 'paid' : 'pending'
+            'status'        => 'success',
+            'message'       => 'Order payment updated successfully',
+            'order'         => $updatedOrder,
+            'badal_updated' => $hasBadalOrders,
+            'order_status'  => $newStatus == 1 ? 'paid' : 'pending',
         ];
 
         if ($imageFilename) {
@@ -1058,6 +1112,7 @@ class Orders extends ApiController
             $response['new_payment_method_id'] = $newPaymentMethodId;
             $response['new_payment_method_key'] = $newPaymentMethodKey;
         }
+
         $this->response($response);
     }
 }
