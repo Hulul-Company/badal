@@ -994,28 +994,28 @@ class Orders extends ApiController
                 }
 
               
-                // $substitutes = $this->model('Substitute')->getActiveSubstitutes();
+                $substitutes = $this->model('Substitute')->getActiveSubstitutes();
 
-                // if (!empty($substitutes)) {
-                //     $messaging = $this->model('Messaging');
+                if (!empty($substitutes)) {
+                    $messaging = $this->model('Messaging');
 
-                //     foreach ($substitutes as $substitute) {
-                //         if (!empty($substitute->donor_id) && !empty($substitute->fcm_token)) {
-                //             $substituteData = [
-                //                 'notify_id'  => $substitute->donor_id,
-                //                 'notify'     => "طلب بدل جديد متاح!",
-                //                 'mailto'     => $substitute->email ?? '',
-                //                 'mobile'     => $substitute->phone ?? '',
-                //                 'donor'      => $substitute->full_name ?? 'بديل',
-                //                 'project'    => $updatedOrder->projects ?? $order->projects,
-                //                 'total'      => $updatedOrder->total ?? $order->total,
-                //                 'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
-                //             ];
+                    foreach ($substitutes as $substitute) {
+                        if (!empty($substitute->donor_id) && !empty($substitute->fcm_token)) {
+                            $substituteData = [
+                                'notify_id'  => $substitute->donor_id,
+                                'notify'     => "طلب بدل جديد متاح!",
+                                'mailto'     => $substitute->email ?? '',
+                                'mobile'     => $substitute->phone ?? '',
+                                'donor'      => $substitute->full_name ?? 'بديل',
+                                'project'    => $updatedOrder->projects ?? $order->projects,
+                                'total'      => $updatedOrder->total ?? $order->total,
+                                'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
+                            ];
 
-                //             $messaging->sendNotfication($substituteData, 'newOrder');
-                //         }
-                //     }
-                // }
+                            $messaging->sendNotfication($substituteData, 'newOrder');
+                        }
+                    }
+                }
             }
 
             $updatedDonations = $this->projectModel->updateDonationStatus($order->order_id, 1);
@@ -1051,15 +1051,15 @@ class Orders extends ApiController
             'msg'        => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
         ];
 
-        // $messaging->donationAdminNotify($sendData);
-        // $messaging->donationDonorNotify($sendData);
-        // $messaging->ReciveOrdersApp(
-        //     $sendData['mobile'],
-        //     $sendData['donor'],
-        //     $sendData['identifier'],
-        //     $order->total,
-        //     'namaa.sa'
-        // );
+        $messaging->donationAdminNotify($sendData);
+        $messaging->donationDonorNotify($sendData);
+        $messaging->ReciveOrdersApp(
+            $sendData['mobile'],
+            $sendData['donor'],
+            $sendData['identifier'],
+            $order->total,
+            'namaa.sa'
+        );
 
         /**
          * Send confirmation once only if payment succeeded
@@ -1072,7 +1072,7 @@ class Orders extends ApiController
             $orderCheck = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
 
             if ($orderCheck && !$orderCheck->notified) {
-                // $messaging->sendConfirmation($sendData);
+                $messaging->sendConfirmation($sendData);
                 $this->projectModel->notified($order->order_id);
 
                 require_once APPROOT . '/admin/models/QueueTable.php';
