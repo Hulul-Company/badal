@@ -58,6 +58,66 @@ class Requests extends ApiController
     }
 
     /**
+     * add new request
+     *@param integar $badal_id
+     *@param integar $substitute_id
+     *@param integar $start_at
+     * @return response
+     */
+    public function add()
+    {
+        $data = $this->requiredArray(['badal_id', 'substitute_id', 'start_at']);
+        $order = $this->model->getOrderByBadalID($data['badal_id']); // get orderb badal id
+        if (!$order) {
+            $this->error("Order not found");
+        }
+
+        $validDateRequest = $this->model->checkValidDateRequest($data['badal_id']); //get start day and last day
+
+
+        if ((strtotime($data['start_at']) < $validDateRequest->start_date) || (strtotime($data['start_at']) > $validDateRequest->end_date)) {
+            $this->error(" يجب تقديم الطلب في الموعد من " . date("Y-m-d", $validDateRequest->start_date) . " الي " . date("Y-m-d", $validDateRequest->end_date));
+        }
+        $lastrequests = $this->model->getLastsRequestOfSubstitute($data['badal_id'], $data['substitute_id']); // get the last request of subsitute
+        if (count($lastrequests) > 0) {
+            $this->error("لقد قمت بالتسجيل من قبل");
+        }
+        $checkSameDate = $this->model->checkAcceptSameDate($data); // get the last request of subsitute
+        if (count($checkSameDate) > 0) {
+            $this->error("يوجد لديك عمره ف هذا اليوم");
+        }
+        $request = $this->model->addBadalRequest($data); // add request 
+        $substitute = $this->model->getrequestByIdWithSubstitute($request); //get Selected substitute
+        if ($substitute->status != 1) {
+            $this->error("الحساب متوقف عن الخدمة");
+        }
+        // send messages  (email - sms - whatsapp)
+        if ($request == true) {
+            $sendData = [
+                'mailto'                => $order->email,
+                'mobile'                => $order->mobile,
+                'identifier'            => $order->order_identifier,
+                'total'                 => $order->total,
+                'project'               => $order->projects,
+                'donor'                 => $order->behafeof,
+                'substitute_name'       => $substitute->full_name,
+                'substitute_start'      => $substitute->start_at,
+                'notify_id'             => $order->donor_id,
+                'notify'                => "يرغب في تنفيذ طلبكم",
+                'type'                  => 'newRequest',
+            ];
+
+            $this->messaging->sendNotfication($sendData, 'newRequest');
+
+
+            $this->response("Request added successfully");
+        } else {
+            $this->error("There is a problem .. Please try again");
+        }
+    }
+
+
+    /**
      * select request
      *@param integer $request_id
      * @return response
@@ -128,58 +188,6 @@ class Requests extends ApiController
             $this->error("There is a problem .. Please try again");
         }
     }
-
-
-    /**
-     * select request
-     *@param integar $request_id
-     * @return response
-     */
-    public function select()
-    {
-        $request_id = $this->required('request_id');
-        // get request  
-        $request = $this->model->getRequestById($request_id);
-        if ($request == null) $this->error("request not found");
-        // if ($request->is_selected == 1) $this->response($request, 200, 'Already selected');
-        else {
-            // select request
-            $updateRequest = $this->model->selectRequest($request_id);
-            // update BadalOrder Substiute_id
-            $updateRequest = $this->model->updateBadalOrder($request);
-            if (!$updateRequest) {
-                $this->error("There is a problem .. Please try again");
-            }
-            // delete all request with same day 
-            $deleteRequest = $this->model->deleteSameDateRequest($request);
-
-            $order = $this->model->getOrderByBadalID($request->badal_id); // get orderb badal id
-            // get subsitude with its  donor id
-            $substitute = $this->model->getSubstituteByID($request->substitute_id); //get Selected substitute
-            // send messages  (email - sms - whatsapp)
-            $sendData = [
-                'mailto'            => $substitute->email,
-                'mobile'            => $substitute->phone,
-                'identifier'        => $order->order_identifier,
-                'total'             => $order->total,
-                'project'           => $order->projects,
-                'donor'             => $order->donor_name,
-                'substitute_name'   => $substitute->full_name,
-                'behafeof'          => $order->behafeof,
-                'notify_id'          => $substitute->subsitude_donor_id,
-                'notify'            => "لقد تم اختيارك",
-            ];
-            $this->messaging->sendNotfication($sendData, 'selectRequest');
-
-            $this->updateQueueNotify($order);
-
-            if ($request == true) $this->response($request, 200, 'selected Sucessfully');
-            else {
-                $this->error("There is a problem .. Please try again");
-            }
-        }
-    }
-
     /**
      * cancel request
      *@param integar $request_id
