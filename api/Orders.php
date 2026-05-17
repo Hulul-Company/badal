@@ -994,28 +994,28 @@ class Orders extends ApiController
                 }
 
               
-                $substitutes = $this->model('Substitute')->getActiveSubstitutes();
+                // $substitutes = $this->model('Substitute')->getActiveSubstitutes();
 
-                if (!empty($substitutes)) {
-                    $messaging = $this->model('Messaging');
+                // if (!empty($substitutes)) {
+                //     $messaging = $this->model('Messaging');
 
-                    foreach ($substitutes as $substitute) {
-                        if (!empty($substitute->donor_id) && !empty($substitute->fcm_token)) {
-                            $substituteData = [
-                                'notify_id'  => $substitute->donor_id,
-                                'notify'     => "طلب بدل جديد متاح!",
-                                'mailto'     => $substitute->email ?? '',
-                                'mobile'     => $substitute->phone ?? '',
-                                'donor'      => $substitute->full_name ?? 'بديل',
-                                'project'    => $updatedOrder->projects ?? $order->projects,
-                                'total'      => $updatedOrder->total ?? $order->total,
-                                'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
-                            ];
+                //     foreach ($substitutes as $substitute) {
+                //         if (!empty($substitute->donor_id) && !empty($substitute->fcm_token)) {
+                //             $substituteData = [
+                //                 'notify_id'  => $substitute->donor_id,
+                //                 'notify'     => "طلب بدل جديد متاح!",
+                //                 'mailto'     => $substitute->email ?? '',
+                //                 'mobile'     => $substitute->phone ?? '',
+                //                 'donor'      => $substitute->full_name ?? 'بديل',
+                //                 'project'    => $updatedOrder->projects ?? $order->projects,
+                //                 'total'      => $updatedOrder->total ?? $order->total,
+                //                 'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
+                //             ];
 
-                            $messaging->sendNotfication($substituteData, 'newOrder');
-                        }
-                    }
-                }
+                //             $messaging->sendNotfication($substituteData, 'newOrder');
+                //         }
+                //     }
+                // }
             }
 
             $updatedDonations = $this->projectModel->updateDonationStatus($order->order_id, 1);
