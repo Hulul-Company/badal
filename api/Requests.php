@@ -153,13 +153,19 @@ class Requests extends ApiController
             $this->error("Order not found");
         }
 
-        // get substitute with donor_id + fcm_token
-        $substitute = $this->model->getSubstituteByIDWithToken($request->substitute_id);
+        // get substitute data normally
+        $substitute = $this->model->getSubstituteByID($request->substitute_id);
 
         if (!$substitute) {
-            $this->error("Substitute donor token not found");
+            $this->error("Substitute not found");
         }
 
+        // try to get substitute with fcm token
+        $substituteWithToken = $this->model->getSubstituteByIDWithToken($request->substitute_id);
+
+        if ($substituteWithToken) {
+            $substitute = $substituteWithToken;
+        }
         $sendData = [
             'mailto'            => $substitute->email ?? $substitute->donor_email ?? '',
             'mobile'            => $substitute->phone ?? $substitute->donor_mobile ?? '',
@@ -170,7 +176,7 @@ class Requests extends ApiController
             'substitute_name'   => $substitute->full_name,
             'behafeof'          => $order->behafeof,
 
-            'notify_id'         => $substitute->subsitude_donor_id,
+            'notify_id'         => $substitute->subsitude_donor_id ?? $substitute->donor_id ?? null,
             'notify'            => "لقد تم اختيارك",
             'type'              => 'selectRequest',
 
@@ -178,7 +184,9 @@ class Requests extends ApiController
             'msg'               => "تم اختيارك لتنفيذ طلب بدل في مشروع {$order->projects} نيابة عن {$order->behafeof}",
         ];
 
-        $this->messaging->sendNotfication($sendData, 'selectRequest');
+        if (!empty($sendData['notify_id'])) {
+            $this->messaging->sendNotfication($sendData, 'selectRequest');
+        }
 
         $this->updateQueueNotify($order);
 
