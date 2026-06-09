@@ -354,18 +354,12 @@ class Messaging extends ModelAdmin
         if (!empty($data['substitute_start'])) {
             $substituteStart = $data['substitute_start'];
 
+            /*
+     * لو timestamp رقم: اعمله format عادي
+     * لو نص جاهز: استخدمه كما هو بدون strtotime
+     */
             if (is_numeric($substituteStart)) {
                 $substituteStart = date('Y/m/d | h:i a', (int) $substituteStart);
-            } else {
-                $parsedDate = strtotime($substituteStart);
-
-                if ($parsedDate) {
-                    if (preg_match('/\d{1,2}:\d{2}/', $substituteStart)) {
-                        $substituteStart = date('Y/m/d | h:i a', $parsedDate);
-                    } else {
-                        $substituteStart = date('Y/m/d', $parsedDate);
-                    }
-                }
             }
 
             $msg = str_replace('[[substitute_start]]', $substituteStart, $msg);

@@ -103,7 +103,21 @@ class Requests extends ApiController
 
             $order = $orderWithToken;
 
-            $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof}";
+            /*
+     * مهم:
+     * نستخدم التاريخ المرسل من Postman مباشرة
+     * لأنه هو التاريخ الصحيح اللي اختاره المنفذ
+     */
+            $requestStartInput = trim($data['start_at']);
+            $requestStartTimestamp = strtotime($requestStartInput);
+
+            if ($requestStartTimestamp) {
+                $substituteStartText = date('Y/m/d', $requestStartTimestamp);
+            } else {
+                $substituteStartText = $requestStartInput;
+            }
+
+            $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof} في موعد {$substituteStartText}";
 
             $sendData = [
                 'mailto'                => $order->email ?? '',
@@ -116,14 +130,20 @@ class Requests extends ApiController
 
                 'substitute_name'       => $substitute->full_name,
 
-                // مهم: رجعناه timestamp زي add offer
-                'substitute_start'      => $substitute->start_at,
+                /*
+         * ده للرسالة الداخلية app_notifications
+         * هنخليه نص جاهز عشان ميتحوّلش يوم غلط
+         */
+                'substitute_start'      => $substituteStartText,
 
                 'notify_id'             => $order->donor_id,
                 'notify'                => "يرغب في تنفيذ طلبكم",
                 'type'                  => 'newRequest',
 
-                // Push body
+                /*
+         * ده للـ push الخارجي
+         * نخليه جاهز بالكامل عشان ما يعتمدش على تحويل التاريخ
+         */
                 'body'                  => $body,
                 'msg'                   => $body,
             ];
