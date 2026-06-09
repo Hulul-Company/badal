@@ -351,13 +351,16 @@ class Messaging extends ModelAdmin
         @$data['project'] ? $msg = str_replace('[[project]]', $data['project'], $msg) : ""; // replace project string with project name
         @$data['substitute_name'] ? $msg = str_replace('[[substitute_name]]', @$data['substitute_name'], $msg) : " "; // replace substitute name string with substitute name
         @$data['behafeof'] ? $msg = str_replace('[[behafeof]]', @$data['behafeof'], $msg) : " "; // replace substitute name string with substitute name
-        if (!empty($data['substitute_start'])) {
-            $substituteStart = $data['substitute_start'];
+        if (!empty($data['substitute_start']) || !empty($data['app_substitute_start'])) {
 
             /*
-     * لو timestamp رقم: اعمله format عادي
-     * لو نص جاهز: استخدمه كما هو بدون strtotime
+     * لو فيه app_substitute_start استخدمه للإشعار الداخلي
+     * لو مش موجود، استخدم substitute_start عادي
      */
+            $substituteStart = !empty($data['app_substitute_start'])
+                ? $data['app_substitute_start']
+                : $data['substitute_start'];
+
             if (is_numeric($substituteStart)) {
                 $substituteStart = date('Y/m/d | h:i a', (int) $substituteStart);
             }

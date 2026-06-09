@@ -64,27 +64,30 @@ class Offers extends ApiController
 
         $messaging = $this->model('Messaging');
 
-        $body = "لديك عرض جديد من {$offerData->full_name} على طلب {$offerData->project_name} بقيمة {$offerData->amount}";
+        $internalStartTimestamp = (int) $offerData->start_at;
+        $externalStartTimestamp = $internalStartTimestamp + (3 * 60 * 60);
+        $offerStartText = date('Y/m/d | h:i a', $internalStartTimestamp);
+
+        $body = "لديك عرض جديد من {$offerData->full_name} على طلب {$offerData->project_name} بقيمة {$offerData->amount} في موعد {$offerStartText}";
 
         $sendData = [
             'mailto'            => $order->email ?? '',
             'mobile'            => $order->mobile ?? '',
 
-            // لازم يكون order_identifier
             'identifier'        => $order->order_identifier,
 
             'total'             => $offerData->amount,
             'project'           => $offerData->project_name,
             'donor'             => $order->behafeof ?? $order->donor_name,
             'substitute_name'   => $offerData->full_name,
-            'substitute_start'  => $offerData->start_at,
 
-            // App + Push
+            'substitute_start'      => $externalStartTimestamp,
+            'app_substitute_start'  => $internalStartTimestamp,
+
             'notify_id'         => $order->donor_id,
             'notify'            => "تم إضافة عرض جديد على طلبكم",
             'type'              => 'newOffer',
 
-            // Push body
             'body'              => $body,
             'msg'               => $body,
         ];
