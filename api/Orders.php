@@ -268,7 +268,7 @@ class Orders extends ApiController
             $messaging = $this->model('Messaging');
             $substituteModel = $this->model('Substitute');
 
-   
+
             $notifiedDonors = [];
 
             foreach ($donations as $donation) {
@@ -284,7 +284,7 @@ class Orders extends ApiController
                 $gender = isset($donation->gender) ? trim($donation->gender) : null;
                 $language = isset($donation->language) ? trim($donation->language) : null;
 
-      
+
                 $substitutes = $substituteModel->getActiveSubstitutes($gender, $language);
 
                 if (empty($substitutes)) {
@@ -1007,6 +1007,7 @@ class Orders extends ApiController
             if (!$updatedDonations) {
                 error_log("Warning: Failed to update donations for order_id: {$order->order_id}");
             }
+            // send push notification to all active substitutes
             // send push notification to matching active substitutes only
             $badalOrders = $this->BadalOrder->getBadalOrdersByOrderId($order->order_id);
 
@@ -1014,14 +1015,22 @@ class Orders extends ApiController
                 $messaging = $this->model('Messaging');
                 $substituteModel = $this->model('Substitute');
 
-     
+                /*
+     * منع تكرار الإشعار لنفس المنفذ
+     * لو الأوردر فيه أكتر من طلب بدل بنفس الشروط
+     */
                 $notifiedDonors = [];
 
                 foreach ($badalOrders as $badalOrder) {
                     $gender = !empty($badalOrder->gender) ? trim($badalOrder->gender) : null;
                     $language = !empty($badalOrder->language) ? trim($badalOrder->language) : null;
 
-          
+                    /*
+         * هنا الفلترة المهمة:
+         * مثال:
+         * gender = انثي
+         * language = العربية
+         */
                     $substitutes = $substituteModel->getActiveSubstitutes($gender, $language);
 
                     if (empty($substitutes)) {
@@ -1064,6 +1073,7 @@ class Orders extends ApiController
                     }
                 }
             }
+        }
 
         $donor = $this->donorModel->getDonorId($order->donor_id);
         if (!$donor) {
