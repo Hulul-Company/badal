@@ -614,7 +614,32 @@ class Badalorder extends Model
     {
         return $this->getBy(['badal_id' => $id]);
     }
+    public function getBadalOrdersByOrderId($order_id)
+    {
+        $query = "
+        SELECT 
+            bo.badal_id,
+            bo.order_id,
+            bo.project_id,
+            bo.behafeof,
+            bo.relation,
+            bo.language,
+            bo.gender,
+            bo.total,
+            bo.amount,
+            p.name AS project_name
+        FROM badal_orders bo
+        INNER JOIN projects p 
+            ON p.project_id = bo.project_id
+        WHERE bo.order_id = :order_id
+        AND bo.status <> 2
+    ";
 
+        $this->db->query($query);
+        $this->db->bind(':order_id', (int) $order_id);
+
+        return $this->db->resultSet();
+    }
     /**
      * get subsitude by offer_id 
      * @param Array $ids

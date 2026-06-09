@@ -268,10 +268,7 @@ class Orders extends ApiController
             $messaging = $this->model('Messaging');
             $substituteModel = $this->model('Substitute');
 
-            /*
-     * منع تكرار الإشعار لنفس المنفذ
-     * خصوصًا لو السلة فيها أكتر من طلب بدل بنفس الشروط
-     */
+   
             $notifiedDonors = [];
 
             foreach ($donations as $donation) {
@@ -287,10 +284,7 @@ class Orders extends ApiController
                 $gender = isset($donation->gender) ? trim($donation->gender) : null;
                 $language = isset($donation->language) ? trim($donation->language) : null;
 
-                /*
-         * هنا الفلترة المهمة:
-         * المنفذ لازم يطابق النوع واللغة المطلوبة في الطلب
-         */
+      
                 $substitutes = $substituteModel->getActiveSubstitutes($gender, $language);
 
                 if (empty($substitutes)) {
@@ -1013,31 +1007,63 @@ class Orders extends ApiController
             if (!$updatedDonations) {
                 error_log("Warning: Failed to update donations for order_id: {$order->order_id}");
             }
-            // send push notification to all active substitutes
-            $substitutes = $this->model('Substitute')->getActiveSubstitutes();
+            // send push notification to matching active substitutes only
+            $badalOrders = $this->BadalOrder->getBadalOrdersByOrderId($order->order_id);
 
-            if (!empty($substitutes)) {
+            if (!empty($badalOrders)) {
                 $messaging = $this->model('Messaging');
+                $substituteModel = $this->model('Substitute');
 
-                foreach ($substitutes as $substitute) {
-                    if (!empty($substitute->donor_id) && !empty($substitute->fcm_token)) {
+     
+                $notifiedDonors = [];
+
+                foreach ($badalOrders as $badalOrder) {
+                    $gender = !empty($badalOrder->gender) ? trim($badalOrder->gender) : null;
+                    $language = !empty($badalOrder->language) ? trim($badalOrder->language) : null;
+
+          
+                    $substitutes = $substituteModel->getActiveSubstitutes($gender, $language);
+
+                    if (empty($substitutes)) {
+                        continue;
+                    }
+
+                    foreach ($substitutes as $substitute) {
+                        if (empty($substitute->donor_id) || empty($substitute->fcm_token)) {
+                            continue;
+                        }
+
+                        if (in_array($substitute->donor_id, $notifiedDonors)) {
+                            continue;
+                        }
+
+                        $notifiedDonors[] = $substitute->donor_id;
+
+                        $projectName = $badalOrder->project_name ?? ($updatedOrder->projects ?? $order->projects);
+                        $orderIdentifier = $updatedOrder->order_identifier ?? $order->order_identifier;
+                        $orderTotal = $badalOrder->total ?? ($updatedOrder->total ?? $order->total);
+
                         $substituteData = [
                             'notify_id'  => $substitute->donor_id,
                             'notify'     => "طلب بدل جديد متاح!",
                             'type'       => 'newOrder',
-                            'mailto'     => $substitute->email ?? '',
-                            'mobile'     => $substitute->phone ?? '',
-                            'donor'      => $substitute->full_name ?? 'بديل',
-                            'project'    => $updatedOrder->projects ?? $order->projects,
-                            'total'      => $updatedOrder->total ?? $order->total,
-                            'identifier' => $updatedOrder->order_identifier ?? $order->order_identifier,
+
+                            'mailto'     => $substitute->donor_email ?? $substitute->email ?? '',
+                            'mobile'     => $substitute->donor_mobile ?? $substitute->phone ?? '',
+                            'donor'      => $substitute->donor_full_name ?? $substitute->full_name ?? 'بديل',
+
+                            'project'    => $projectName,
+                            'total'      => $orderTotal,
+                            'identifier' => $orderIdentifier,
+
+                            'body'       => "يوجد طلب بدل جديد مطابق لبياناتكم في {$projectName}",
+                            'msg'        => "يوجد طلب بدل جديد مطابق لبياناتكم في {$projectName}",
                         ];
 
                         $messaging->sendNotfication($substituteData, 'newOrder');
                     }
                 }
             }
-        }
 
         $donor = $this->donorModel->getDonorId($order->donor_id);
         if (!$donor) {
