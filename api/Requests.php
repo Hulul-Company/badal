@@ -94,42 +94,36 @@ class Requests extends ApiController
         // send messages  (email - sms - whatsapp)
         if ($request == true) {
 
-            /*
-     * استخدم التاريخ المرسل من Postman مباشرة للرسالة
-     * عشان ما يحصلش timezone shift ولا يظهر يوم غلط
-     */
-            $requestStartInput = trim($data['start_at']);
+            // get order donor with fcm token زي add offer
+            $orderWithToken = $this->model->getOrderByBadalIDWithToken($data['badal_id']);
 
-            $startTimestamp = strtotime($requestStartInput);
-
-            if ($startTimestamp) {
-                // لو مبعوت تاريخ فقط: 2026-06-10
-                $substituteStart = date('Y/m/d', $startTimestamp);
-            } else {
-                // fallback
-                $substituteStart = $requestStartInput;
+            if (!$orderWithToken) {
+                $this->error("Order donor token not found");
             }
 
-            $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof} في موعد {$substituteStart}";
+            $order = $orderWithToken;
+
+            $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof}";
 
             $sendData = [
-                'mailto'                => $order->email,
-                'mobile'                => $order->mobile,
+                'mailto'                => $order->email ?? '',
+                'mobile'                => $order->mobile ?? '',
                 'identifier'            => $order->order_identifier,
                 'total'                 => $order->total,
                 'project'               => $order->projects,
-                'donor'                 => $order->behafeof,
-                'name'                  => $order->behafeof,
+                'donor'                 => $order->behafeof ?? $order->donor_name,
+                'name'                  => $order->behafeof ?? $order->donor_name,
+
                 'substitute_name'       => $substitute->full_name,
 
-                // مهم: نبعت التاريخ كنص جاهز
-                'substitute_start'      => $substituteStart,
+                // مهم: رجعناه timestamp زي add offer
+                'substitute_start'      => $substitute->start_at,
 
                 'notify_id'             => $order->donor_id,
                 'notify'                => "يرغب في تنفيذ طلبكم",
                 'type'                  => 'newRequest',
 
-                // مهم للإشعار الخارجي
+                // Push body
                 'body'                  => $body,
                 'msg'                   => $body,
             ];

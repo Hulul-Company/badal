@@ -243,7 +243,48 @@ class Request extends Model
             return false;
         }
     }
+    public function getOrderByBadalIDWithToken($badal_id)
+    {
+        $query = "
+        SELECT 
+            badal_orders.badal_id,
+            badal_orders.order_id,
+            badal_orders.behafeof,
 
+            orders.order_identifier,
+            orders.total,
+            orders.projects,
+            orders.donor_name,
+
+            donors.donor_id,
+            donors.email,
+            donors.mobile,
+            donors.full_name,
+
+            fcm_tokens.fcm_token
+
+        FROM badal_orders
+        INNER JOIN orders 
+            ON orders.order_id = badal_orders.order_id
+        INNER JOIN donors 
+            ON donors.donor_id = orders.donor_id
+        INNER JOIN fcm_tokens 
+            ON fcm_tokens.donor_id = donors.donor_id
+            AND fcm_tokens.fcm_token IS NOT NULL
+            AND fcm_tokens.fcm_token != ''
+
+        WHERE badal_orders.badal_id = :badal_id
+        AND donors.status <> 2
+
+        ORDER BY fcm_tokens.modified_date DESC
+        LIMIT 1
+    ";
+
+        $this->db->query($query);
+        $this->db->bind(':badal_id', $badal_id);
+
+        return $this->db->single();
+    }
     /**
      * get late time from setting
      * @param Array $id
