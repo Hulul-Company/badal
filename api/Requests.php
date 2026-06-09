@@ -105,17 +105,16 @@ class Requests extends ApiController
 
             /*
      * مهم:
-     * نستخدم التاريخ المرسل من Postman مباشرة
-     * لأنه هو التاريخ الصحيح اللي اختاره المنفذ
+     * نستخدم تاريخ Postman نفسه
+     * ونحوله timestamp في منتصف اليوم بتوقيت السعودية
+     * عشان الإشعار الخارجي ما يرجعش يوم
      */
             $requestStartInput = trim($data['start_at']);
-            $requestStartTimestamp = strtotime($requestStartInput);
 
-            if ($requestStartTimestamp) {
-                $substituteStartText = date('Y/m/d', $requestStartTimestamp);
-            } else {
-                $substituteStartText = $requestStartInput;
-            }
+            $notificationDate = new DateTime($requestStartInput . ' 12:00:00', new DateTimeZone('Asia/Riyadh'));
+            $notificationStartTimestamp = $notificationDate->getTimestamp();
+
+            $substituteStartText = $notificationDate->format('Y/m/d');
 
             $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof} في موعد {$substituteStartText}";
 
@@ -131,19 +130,16 @@ class Requests extends ApiController
                 'substitute_name'       => $substitute->full_name,
 
                 /*
-         * ده للرسالة الداخلية app_notifications
-         * هنخليه نص جاهز عشان ميتحوّلش يوم غلط
+         * مهم جدًا:
+         * نخليه timestamp مش text
+         * عشان الإشعار الخارجي يشتغل زي add offer
          */
-                'substitute_start'      => $substituteStartText,
+                'substitute_start'      => $notificationStartTimestamp,
 
                 'notify_id'             => $order->donor_id,
                 'notify'                => "يرغب في تنفيذ طلبكم",
                 'type'                  => 'newRequest',
 
-                /*
-         * ده للـ push الخارجي
-         * نخليه جاهز بالكامل عشان ما يعتمدش على تحويل التاريخ
-         */
                 'body'                  => $body,
                 'msg'                   => $body,
             ];
