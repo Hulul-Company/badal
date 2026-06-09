@@ -92,7 +92,22 @@ class Requests extends ApiController
             $this->error("الحساب متوقف عن الخدمة");
         }
         // send messages  (email - sms - whatsapp)
+        // send messages  (email - sms - whatsapp)
         if ($request == true) {
+
+            /*
+     * Fix notification date issue:
+     * لا تبعت timestamp خام للـ push notification
+     * ابعت التاريخ formatted string عشان ما يحصلش timezone shift
+     */
+            $startTimestamp = is_numeric($substitute->start_at)
+                ? (int) $substitute->start_at
+                : strtotime($substitute->start_at);
+
+            $substituteStart = date('Y-m-d', $startTimestamp);
+
+            $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof} في موعد {$substituteStart}";
+
             $sendData = [
                 'mailto'                => $order->email,
                 'mobile'                => $order->mobile,
@@ -100,15 +115,22 @@ class Requests extends ApiController
                 'total'                 => $order->total,
                 'project'               => $order->projects,
                 'donor'                 => $order->behafeof,
+                'name'                  => $order->behafeof,
                 'substitute_name'       => $substitute->full_name,
-                'substitute_start'      => $substitute->start_at,
+
+                // هنا التعديل المهم
+                'substitute_start'      => $substituteStart,
+
                 'notify_id'             => $order->donor_id,
                 'notify'                => "يرغب في تنفيذ طلبكم",
                 'type'                  => 'newRequest',
+
+                // مهم للـ push body
+                'body'                  => $body,
+                'msg'                   => $body,
             ];
 
             $this->messaging->sendNotfication($sendData, 'newRequest');
-
 
             $this->response("Request added successfully");
         } else {
