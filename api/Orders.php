@@ -144,7 +144,7 @@ class Orders extends ApiController
                 $this->error('Upload failed: ' . implode(',', $image['error']));
             }
 
-            $image['filename'] = $image['filename']; 
+            $image['filename'] = $image['filename'];
         } else {
             $image['filename'] = false;
         }
@@ -180,7 +180,7 @@ class Orders extends ApiController
             'status' =>  $status,
             'app' => 'kafara'
         ];
-        
+
 
         //loop through donations
         foreach ($donations as $key => $donation) {
@@ -265,31 +265,71 @@ class Orders extends ApiController
         $this->projectModel->updateOrderMeta($orderdata);
 
         if ($orderdata['app'] === 'badal') {
-            $substitutes = $this->model('Substitute')->getActiveSubstitutes(); 
+            $messaging = $this->model('Messaging');
+            $substituteModel = $this->model('Substitute');
 
-            if (!empty($substitutes)) {
-                $messaging = $this->model('Messaging');
+            /*
+     * منع تكرار الإشعار لنفس المنفذ
+     * خصوصًا لو السلة فيها أكتر من طلب بدل بنفس الشروط
+     */
+            $notifiedDonors = [];
+
+            foreach ($donations as $donation) {
+                $project = $this->projectModel->getSingle(
+                    'project_id, badal, name',
+                    ['project_id' => $donation->project_id, 'status' => 1]
+                );
+
+                if (!$project || !$project->badal) {
+                    continue;
+                }
+
+                $gender = isset($donation->gender) ? trim($donation->gender) : null;
+                $language = isset($donation->language) ? trim($donation->language) : null;
+
+                /*
+         * هنا الفلترة المهمة:
+         * المنفذ لازم يطابق النوع واللغة المطلوبة في الطلب
+         */
+                $substitutes = $substituteModel->getActiveSubstitutes($gender, $language);
+
+                if (empty($substitutes)) {
+                    continue;
+                }
 
                 foreach ($substitutes as $substitute) {
-                    if ($substitute->donor_id && $substitute->fcm_token) {
-                        $sendData = [
-                            'notify_id' => $substitute->donor_id,
-                            'notify'    => "طلب بدل جديد متاح!", 
-                            'type'      => 'newOrder', 
-                            'mailto'    => $substitute->email ?? '',
-                            'mobile'    => $substitute->phone ?? '',
-                            'donor'     => $substitute->full_name ?? 'بديل',
-                            'project'   => $orderdata['projects'],
-                            'total'     => $orderdata['total'],
-                            'identifier' => $orderdata['order_identifier'],
-                        ];
-
-                        $messaging->sendNotfication($sendData, 'newOrder');
+                    if (empty($substitute->donor_id) || empty($substitute->fcm_token)) {
+                        continue;
                     }
+
+                    if (in_array($substitute->donor_id, $notifiedDonors)) {
+                        continue;
+                    }
+
+                    $notifiedDonors[] = $substitute->donor_id;
+
+                    $sendData = [
+                        'notify_id'  => $substitute->donor_id,
+                        'notify'     => "طلب بدل جديد متاح!",
+                        'type'       => 'newOrder',
+
+                        'mailto'     => $substitute->donor_email ?? $substitute->email ?? '',
+                        'mobile'     => $substitute->donor_mobile ?? $substitute->phone ?? '',
+                        'donor'      => $substitute->donor_full_name ?? $substitute->full_name ?? 'بديل',
+
+                        'project'    => $project->name ?? $orderdata['projects'],
+                        'total'      => $donation->total ?? $orderdata['total'],
+                        'identifier' => $orderdata['order_identifier'],
+
+                        'body'       => "يوجد طلب بدل جديد مطابق لبياناتكم في {$project->name}",
+                        'msg'        => "يوجد طلب بدل جديد مطابق لبياناتكم في {$project->name}",
+                    ];
+
+                    $messaging->sendNotfication($sendData, 'newOrder');
                 }
             }
         }
-                //prepare notification data
+        //prepare notification data
         $messaging = $this->model('Messaging');
         $sendData = [
             'mailto' => $donor->email,
@@ -344,7 +384,7 @@ class Orders extends ApiController
             'data' => $responseData
         ]);
     }
-   
+
 
     public function test()
     {

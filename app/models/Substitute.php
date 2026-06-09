@@ -281,18 +281,51 @@ class Substitute extends Model
         $this->db->excute();
         return $this->db->resultSet();
     }
-    public function getActiveSubstitutes()
-{
-    $query = "
-        SELECT s.*, d.donor_id, ft.fcm_token, d.email, d.mobile, d.full_name
+    public function getActiveSubstitutes($gender = null, $language = null)
+    {
+        $query = "
+        SELECT 
+            s.*,
+            d.donor_id,
+            d.email AS donor_email,
+            d.mobile AS donor_mobile,
+            d.full_name AS donor_full_name,
+            ft.fcm_token
         FROM substitutes s
-        LEFT JOIN donors d ON s.phone = d.mobile AND d.is_substitute = 1
-        LEFT JOIN fcm_tokens ft ON ft.donor_id = d.donor_id
+        INNER JOIN donors d 
+            ON d.mobile = s.phone
+            AND d.is_substitute = 1
+            AND d.status = 1
+        INNER JOIN fcm_tokens ft 
+            ON ft.donor_id = d.donor_id
+            AND ft.fcm_token IS NOT NULL
+            AND ft.fcm_token != ''
         WHERE s.status = 1
-        AND ft.fcm_token IS NOT NULL
     ";
 
-    $this->db->query($query);
-    return $this->db->resultSet();
-}
+        if (!empty($gender)) {
+            $query .= " AND s.gender = :gender ";
+        }
+
+        if (!empty($language)) {
+            $query .= " AND FIND_IN_SET(:language, s.languages) > 0 ";
+        }
+
+        $query .= "
+        GROUP BY d.donor_id
+        ORDER BY s.create_date DESC
+    ";
+
+        $this->db->query($query);
+
+        if (!empty($gender)) {
+            $this->db->bind(':gender', $gender);
+        }
+
+        if (!empty($language)) {
+            $this->db->bind(':language', $language);
+        }
+
+        return $this->db->resultSet();
+    }
 }
