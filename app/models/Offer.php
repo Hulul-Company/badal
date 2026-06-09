@@ -34,7 +34,8 @@ class Offer extends Model
         $this->db->bind(':substitute_id', $data['substitute_id']);
         $this->db->bind(':project_id', $data['project_id']);
         $this->db->bind(':amount', $data['amount']);
-        $this->db->bind(':start_at', strtotime($data['start_at']));
+        $offerDate = new DateTime($data['start_at'], new DateTimeZone('Asia/Riyadh'));
+        $this->db->bind(':start_at', $offerDate->getTimestamp());
         $this->db->bind(':status', 0);
         $this->db->bind(':modified_date', time());
         $this->db->bind(':create_date', time());
@@ -236,8 +237,11 @@ class Offer extends Model
                     AND `status` <> 2 ';
         $this->db->query($query);
         $this->db->bind(':substitute_id', $data['substitute_id']);
-        $this->db->bind(':start_at', strtotime($data['start_at']) - ($data['offer_time'] * 60 * 60));
-        $this->db->bind(':end_at', strtotime($data['start_at']) + ($data['offer_time'] * 60 * 60));
+        $offerDate = new DateTime($data['start_at'], new DateTimeZone('Asia/Riyadh'));
+        $offerTimestamp = $offerDate->getTimestamp();
+
+        $this->db->bind(':start_at', $offerTimestamp - ($data['offer_time'] * 60 * 60));
+        $this->db->bind(':end_at', $offerTimestamp + ($data['offer_time'] * 60 * 60));
         return $this->db->resultSet();
     }
 
