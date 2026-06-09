@@ -106,7 +106,10 @@ class Request extends Model
         // binding values
         $this->db->bind(':badal_id', $data['badal_id']);
         $this->db->bind(':substitute_id', $data['substitute_id']);
-        $this->db->bind(':start_at', strtotime($data['start_at']));
+        $dt = new DateTime($data['start_at'], new DateTimeZone('Asia/Riyadh'));
+        $dt->setTimezone(new DateTimeZone('UTC'));
+
+        $this->db->bind(':start_at', $dt->getTimestamp());
         $this->db->bind(':is_selected', 0);
         $this->db->bind(':status', 1);
         $this->db->bind(':type', "badal");
@@ -372,7 +375,7 @@ class Request extends Model
             return false;
         }
     }
-    
+
     /**
      * delete all Request with the same day by Request id 
      * @param Array $id
@@ -414,7 +417,7 @@ class Request extends Model
                     from badal_orders bo , projects p 
                     where bo.badal_id = :badal_id
                     and bo.project_id = p.project_id";
-                    
+
         $this->db->query($query);
         $this->db->bind(':badal_id', $badal_id);
         return $this->db->single();
