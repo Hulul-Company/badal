@@ -45,11 +45,9 @@ class Messaging extends ModelAdmin
         parent::__construct('Donor');
     }
 
-    
 
-    public function log()
-    {
-    }
+
+    public function log() {}
 
     /**
      * sendning message to member
@@ -139,19 +137,19 @@ class Messaging extends ModelAdmin
             $msg = str_replace('[[identifier]]', $data['identifier'], $msg); // replace identifier string with identifier
             $msg = str_replace('[[total]]', $data['total'], $msg); // replace total string with order total
             $msg = str_replace('[[project]]', $data['project'], $msg); // replace project string with project name
-            $msg = str_replace('[[link]]', URLROOT .'/invoices/show/' . orderIdentifier(@$data['order_id'])??"", $msg); // replace link string with order invoices 
+            $msg = str_replace('[[link]]', URLROOT . '/invoices/show/' . orderIdentifier(@$data['order_id']) ?? "", $msg); // replace link string with order invoices 
 
-            
+
             // send email
             if (!empty($data['mailto'])) $this->Email($data['mailto'],  $msg_option->confirm_subject, $msg);
         }
-        
+
         if ($msg_option->confirm_sms) {
             $smsmsg = str_replace('[[name]]', $data['donor'], $msg_option->confirm_sms_msg); // replace name string with user name
             $smsmsg = str_replace('[[identifier]]', $data['identifier'], $smsmsg); // replace identifier string with identifier
             $smsmsg = str_replace('[[total]]', $data['total'], $smsmsg); // replace total string with order total
             $smsmsg = str_replace('[[project]]', $data['project'], $smsmsg); // replace project string with project name
-            $smsmsg = str_replace('[[link]]', URLROOT .'/invoices/show/' . orderIdentifier($data['order_id'])??"", $smsmsg); // replace link string with order invoices 
+            $smsmsg = str_replace('[[link]]', URLROOT . '/invoices/show/' . orderIdentifier($data['order_id']) ?? "", $smsmsg); // replace link string with order invoices 
 
             // send SMS
             $this->SMS($data['mobile'], $smsmsg);
@@ -280,7 +278,7 @@ class Messaging extends ModelAdmin
         $this->NotficationWhatssApp("$data[mobile]", "$data[mailto]", " $data[project]", "$data[total]", "deceased");
     }
 
-     /**
+    /**
      * send Email and SMS Confirmation
      *
      * @param [array] $data
@@ -289,14 +287,14 @@ class Messaging extends ModelAdmin
     public function sendNotfication($data, $type)
     {
         $data['type'] = $type;
-        
+
         // store notify in app_notfiacrion 
         $this->storeNotfication($data);
-        
+
         // send email, sms and notify by api in laravel application 
         $curl = curl_init();
         curl_setopt_array($curl, array(
-            CURLOPT_URL => NOTIFICATION_DOMAIN. '/api/notfication',
+            CURLOPT_URL => NOTIFICATION_DOMAIN . '/api/notfication',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_ENCODING => '',
             CURLOPT_MAXREDIRS => 10,
@@ -327,14 +325,14 @@ class Messaging extends ModelAdmin
         $sms_msgSetting = $data['type'] . '_sms_msg';
         require_once APPROOT . '/app/models/Notification.php';
         $model = new Notification();
-        $orderInfo =  $model->getOrderInfo( $data['identifier']);
+        $orderInfo =  $model->getOrderInfo($data['identifier']);
         if ($data['notify'] != null && $data['notify_id'] != null) {
             $notify['title']    = $data['notify'];
             $notify['donor_id'] = $data['notify_id'];
             $notify['type']     = $data['type'];
             $notify['badal_id'] = $orderInfo->badal_id;
             $notify['order_id'] = $orderInfo->order_id;
-            $notify['msg'] =  $this->getMessage($setting->$sms_msgSetting, $data); 
+            $notify['msg'] =  $this->getMessage($setting->$sms_msgSetting, $data);
             $model->storeNotify($notify);
         };
     }
@@ -353,7 +351,25 @@ class Messaging extends ModelAdmin
         @$data['project'] ? $msg = str_replace('[[project]]', $data['project'], $msg) : ""; // replace project string with project name
         @$data['substitute_name'] ? $msg = str_replace('[[substitute_name]]', @$data['substitute_name'], $msg) : " "; // replace substitute name string with substitute name
         @$data['behafeof'] ? $msg = str_replace('[[behafeof]]', @$data['behafeof'], $msg) : " "; // replace substitute name string with substitute name
-        @$data['substitute_start'] ? $msg = str_replace('[[substitute_start]]',  date('Y/ m/ d | H:i a', @$data['substitute_start']), $msg) : ""; // replace start date string with start date name
+        if (!empty($data['substitute_start'])) {
+            $substituteStart = $data['substitute_start'];
+
+            if (is_numeric($substituteStart)) {
+                $substituteStart = date('Y/m/d | h:i a', (int) $substituteStart);
+            } else {
+                $parsedDate = strtotime($substituteStart);
+
+                if ($parsedDate) {
+                    if (preg_match('/\d{1,2}:\d{2}/', $substituteStart)) {
+                        $substituteStart = date('Y/m/d | h:i a', $parsedDate);
+                    } else {
+                        $substituteStart = date('Y/m/d', $parsedDate);
+                    }
+                }
+            }
+
+            $msg = str_replace('[[substitute_start]]', $substituteStart, $msg);
+        }
         @$data['rate'] ? $msg = str_replace('[[rate]]', @$data['rate'], $msg) : " "; // replace start date string with start date name
         return $msg;
     }
@@ -367,8 +383,8 @@ class Messaging extends ModelAdmin
      */
     function sendDonor($title, $message, $donor_id)
     {
-        $donor =  $this->countAll('WHERE donors.donor_id = ' . $donor_id, '', 'donors'); 
-        if($donor == 1){
+        $donor =  $this->countAll('WHERE donors.donor_id = ' . $donor_id, '', 'donors');
+        if ($donor == 1) {
             sendPush($title, $message, $donor_id);
         }
     }
