@@ -1015,22 +1015,13 @@ class Orders extends ApiController
                 $messaging = $this->model('Messaging');
                 $substituteModel = $this->model('Substitute');
 
-                /*
-     * منع تكرار الإشعار لنفس المنفذ
-     * لو الأوردر فيه أكتر من طلب بدل بنفس الشروط
-     */
                 $notifiedDonors = [];
 
                 foreach ($badalOrders as $badalOrder) {
                     $gender = !empty($badalOrder->gender) ? trim($badalOrder->gender) : null;
                     $language = !empty($badalOrder->language) ? trim($badalOrder->language) : null;
 
-                    /*
-         * هنا الفلترة المهمة:
-         * مثال:
-         * gender = انثي
-         * language = العربية
-         */
+
                     $substitutes = $substituteModel->getActiveSubstitutes($gender, $language);
 
                     if (empty($substitutes)) {
@@ -1097,7 +1088,7 @@ class Orders extends ApiController
         $messaging->donationDonorNotify($sendData);
         $messaging->ReciveOrdersApp($sendData['mobile'], $sendData['donor'], $sendData['identifier'], $order->total, 'namaa.sa');
 
-        if ($payfortResponse && @$payfortResponse->status == 14) {
+        if ($payfortResponse && isset($payfortResponse['status']) && $payfortResponse['status'] == 14) {
             $orderCheck = $this->projectModel->getSingle('*', ['order_id' => $order->order_id], 'orders');
             if (!$orderCheck->notified) {
                 $messaging->sendConfirmation($sendData);

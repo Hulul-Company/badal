@@ -353,10 +353,7 @@ class Messaging extends ModelAdmin
         @$data['behafeof'] ? $msg = str_replace('[[behafeof]]', @$data['behafeof'], $msg) : " "; // replace substitute name string with substitute name
         if (!empty($data['substitute_start']) || !empty($data['app_substitute_start'])) {
 
-            /*
-     * لو فيه app_substitute_start استخدمه للإشعار الداخلي
-     * لو مش موجود، استخدم substitute_start عادي
-     */
+   
             $substituteStart = !empty($data['app_substitute_start'])
                 ? $data['app_substitute_start']
                 : $data['substitute_start'];

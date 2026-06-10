@@ -121,7 +121,11 @@ class Requests extends ApiController
                 $this->error("Invalid start_at format. Use: 2027-01-13 4:30 PM");
             }
 
-            $notificationStartTimestamp = $notificationDate->getTimestamp();
+            $internalStartTimestamp = $notificationDate->getTimestamp();
+
+
+            $externalStartTimestamp = $internalStartTimestamp + (3 * 60 * 60);
+
             $substituteStartText = $notificationDate->format('Y/m/d | h:i a');
 
             $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof} في موعد {$substituteStartText}";
@@ -137,9 +141,10 @@ class Requests extends ApiController
 
                 'substitute_name'       => $substitute->full_name,
 
-       
-                'substitute_start'      => $notificationStartTimestamp,
 
+                'substitute_start'      => $externalStartTimestamp,
+
+                'app_substitute_start'  => $internalStartTimestamp,
                 'notify_id'             => $order->donor_id,
                 'notify'                => "يرغب في تنفيذ طلبكم",
                 'type'                  => 'newRequest',
