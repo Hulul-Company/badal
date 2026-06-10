@@ -103,18 +103,26 @@ class Requests extends ApiController
 
             $order = $orderWithToken;
 
-            /*
-     * مهم:
-     * نستخدم تاريخ Postman نفسه
-     * ونحوله timestamp في منتصف اليوم بتوقيت السعودية
-     * عشان الإشعار الخارجي ما يرجعش يوم
-     */
+
             $requestStartInput = trim($data['start_at']);
 
-            $notificationDate = new DateTime($requestStartInput . ' 12:00:00', new DateTimeZone('Asia/Riyadh'));
-            $notificationStartTimestamp = $notificationDate->getTimestamp();
+            try {
 
-            $substituteStartText = $notificationDate->format('Y/m/d');
+                $notificationDate = DateTime::createFromFormat(
+                    'Y-m-d g:i A',
+                    $requestStartInput,
+                    new DateTimeZone('Asia/Riyadh')
+                );
+
+                if (!$notificationDate) {
+                    $this->error("Invalid start_at format. Use: 2027-01-13 4:30 PM");
+                }
+            } catch (Exception $e) {
+                $this->error("Invalid start_at format. Use: 2027-01-13 4:30 PM");
+            }
+
+            $notificationStartTimestamp = $notificationDate->getTimestamp();
+            $substituteStartText = $notificationDate->format('Y/m/d | h:i a');
 
             $body = "{$substitute->full_name} يرغب في تنفيذ طلبكم رقم {$order->order_identifier} وإتمام {$order->projects} نيابة عن {$order->behafeof} في موعد {$substituteStartText}";
 
@@ -129,11 +137,7 @@ class Requests extends ApiController
 
                 'substitute_name'       => $substitute->full_name,
 
-                /*
-         * مهم جدًا:
-         * نخليه timestamp مش text
-         * عشان الإشعار الخارجي يشتغل زي add offer
-         */
+       
                 'substitute_start'      => $notificationStartTimestamp,
 
                 'notify_id'             => $order->donor_id,
