@@ -115,12 +115,12 @@ class PayfortWebhook
         $this->projectModel->updateOrderMeta($data);
         $this->projectModel->updateDonationStatus($order->order_id, $newStatus);
         $this->updateBadalOrderStatus($order->order_id, $newStatus);
-
-        $this->markWebhookProcessed($order->order_id);
-
         if ($isSuccess && !$order->notified) {
             $this->sendNotifications($order);
         }
+        $this->markWebhookProcessed($order->order_id);
+
+
 
         $this->log("Order processed: $merchantReference | Success: " . ($isSuccess ? 'YES' : 'NO'));
     }
@@ -162,20 +162,35 @@ class PayfortWebhook
         }
 
         $sendData = [
-            'mailto' => $donor->email,
-            'mobile' => $donor->mobile,
+            'mailto'     => $donor->email ?? '',
+            'mobile'     => $donor->mobile ?? '',
             'identifier' => $order->order_identifier,
-            'order_id' => $order->order_id,
-            'total' => $order->total,
-            'project' => $order->projects,
-            'donor' => $order->donor_name,
+            'order_id'   => $order->order_id,
+            'total'      => $order->total,
+            'project'    => $order->projects,
+            'donor'      => $order->donor_name,
+            'subject'    => 'تم تسجيل طلب جديد',
+            'msg'        => "تم تسجيل طلب جديد بمشروع: {$order->projects} <br/> بقيمة: {$order->total}",
         ];
 
-        $this->projectModel->notified($order->order_id);
-        $this->messagingModel->sendConfirmation($sendData);
-        $this->messagingModel->sendGiftCard($order);
+        try {
+            // ابعت رسالة التأكيد الأول
+            $this->messagingModel->sendConfirmation($sendData);
 
-        $this->log("Notifications sent for order: {$order->order_id}");
+            // ابعت كارت الهدية فقط لو الطلب هدية
+            if (!empty($order->gift) && $order->gift == 1 && !empty($order->gift_data)) {
+                $this->messagingModel->sendGiftCard($order);
+            }
+
+            // بعد الإرسال فقط علّم الطلب notified
+            $this->projectModel->notified($order->order_id);
+
+            $this->log("Confirmation notifications sent and order marked notified: {$order->order_id}");
+        } catch (Exception $e) {
+            $this->log("Notification error for order {$order->order_id}: " . $e->getMessage());
+        } catch (Error $e) {
+            $this->log("Notification fatal error for order {$order->order_id}: " . $e->getMessage());
+        }
     }
 
     private function log($message)
